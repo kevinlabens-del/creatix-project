@@ -42,70 +42,44 @@ jobs:
             fi
           fi
           test -f _site/index.html
-
           cp auto-layout.js _site/auto-layout.js
           cp remote-admin.js _site/remote-admin.js
           cp business-card.js _site/business-card.js
           cp business-card.jpg _site/business-card.jpg
           python3 - <<'PY'
           from pathlib import Path
-
-          index = Path('_site/index.html')
-          html = index.read_text(encoding='utf-8')
-          target = '<script src="app.js"></script>'
-          layout_marker = '<script src="auto-layout.js"></script>'
-          remote_v9 = '<script src="remote-admin.js"></script>'
-          remote_v10 = '<script src="remote-admin.js?v=1.16.10"></script>'
-          card_marker = '<script src="business-card.js?v=1.16.11"></script>'
-          old_security = '<script src="admin-security.js"></script>'
-
-          if target not in html:
-              raise SystemExit('app.js script tag not found')
-          html = html.replace(old_security, '')
-          html = html.replace(remote_v9, remote_v10)
-          if layout_marker not in html:
-              html = html.replace(target, target + layout_marker, 1)
-          if remote_v10 not in html:
-              insert_after = layout_marker if layout_marker in html else target
-              html = html.replace(insert_after, insert_after + remote_v10, 1)
-          if card_marker not in html:
-              insert_after = remote_v10 if remote_v10 in html else layout_marker
-              html = html.replace(insert_after, insert_after + card_marker, 1)
-          index.write_text(html, encoding='utf-8')
-
-          sw = Path('_site/sw.js')
+          index=Path('_site/index.html')
+          html=index.read_text(encoding='utf-8')
+          target='<script src="app.js"></script>'
+          layout='<script src="auto-layout.js"></script>'
+          remote='<script src="remote-admin.js?v=1.16.10"></script>'
+          card='<script src="business-card.js?v=1.16.12"></script>'
+          html=html.replace('<script src="admin-security.js"></script>','')
+          html=html.replace('<script src="remote-admin.js"></script>',remote)
+          html=html.replace('<script src="business-card.js?v=1.16.11"></script>',card)
+          if layout not in html: html=html.replace(target,target+layout,1)
+          if remote not in html: html=html.replace(layout,layout+remote,1)
+          if card not in html: html=html.replace(remote,remote+card,1)
+          index.write_text(html,encoding='utf-8')
+          sw=Path('_site/sw.js')
           if sw.exists():
-              text = sw.read_text(encoding='utf-8')
-              for old in [
-                  "const CACHE='cr3atix-map-v1.16.5'",
-                  "const CACHE='cr3atix-map-v1.16.7-pyramid'",
-                  "const CACHE='cr3atix-map-v1.16.8-pin'",
-                  "const CACHE='cr3atix-map-v1.16.9-supabase-admin'",
-                  "const CACHE='cr3atix-map-v1.16.10-admin-gate'",
-              ]:
-                  text = text.replace(old, "const CACHE='cr3atix-map-v1.16.11-business-card'")
-              text = text.replace(", './admin-security.js'", "")
-              text = text.replace(",'./admin-security.js'", "")
-              text = text.replace("'./admin-security.js',", "")
-              text = text.replace("'./admin-security.js'", "")
-              if "'./auto-layout.js'" not in text:
-                  text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
-              if "'./remote-admin.js'" not in text:
-                  text = text.replace("'./auto-layout.js'", "'./auto-layout.js','./remote-admin.js'")
-              if "'./business-card.js'" not in text:
-                  text = text.replace("'./remote-admin.js'", "'./remote-admin.js','./business-card.js','./business-card.jpg'")
-              sw.write_text(text, encoding='utf-8')
+              text=sw.read_text(encoding='utf-8')
+              for old in ["cr3atix-map-v1.16.5","cr3atix-map-v1.16.7-pyramid","cr3atix-map-v1.16.8-pin","cr3atix-map-v1.16.9-supabase-admin","cr3atix-map-v1.16.10-admin-gate","cr3atix-map-v1.16.11-business-card"]:
+                  text=text.replace(old,"cr3atix-map-v1.16.12-business-card-fix")
+              text=text.replace(", './admin-security.js'","").replace(",'./admin-security.js'","").replace("'./admin-security.js',","").replace("'./admin-security.js'","")
+              if "'./auto-layout.js'" not in text: text=text.replace("'./app.js','./auto-update.js'","'./app.js','./auto-layout.js','./auto-update.js'")
+              if "'./remote-admin.js'" not in text: text=text.replace("'./auto-layout.js'","'./auto-layout.js','./remote-admin.js'")
+              if "'./business-card.js'" not in text: text=text.replace("'./remote-admin.js'","'./remote-admin.js','./business-card.js','./business-card.jpg'")
+              sw.write_text(text,encoding='utf-8')
           PY
           touch _site/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./_site
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
