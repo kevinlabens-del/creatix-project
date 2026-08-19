@@ -43,8 +43,8 @@ jobs:
           fi
           test -f _site/index.html
 
-          # v1.16.6: automatic layout overlay. The original add/edit/delete
-          # workflow remains untouched inside app.js.
+          # v1.16.7: centered pyramidal automatic layout overlay.
+          # The original add/edit/delete workflow remains untouched in app.js.
           cp auto-layout.js _site/auto-layout.js
           python3 - <<'PY'
           from pathlib import Path
@@ -62,7 +62,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = text.replace("const CACHE='cr3atix-map-v1.16.5'", "const CACHE='cr3atix-map-v1.16.6-autolayout'")
+              text = text.replace("const CACHE='cr3atix-map-v1.16.5'", "const CACHE='cr3atix-map-v1.16.7-pyramid'")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
               sw.write_text(text, encoding='utf-8')
