@@ -42,25 +42,42 @@ jobs:
             fi
           fi
           test -f _site/index.html
+
+          # v1.16.6: automatic layout overlay. The original add/edit/delete
+          # workflow remains untouched inside app.js.
+          cp auto-layout.js _site/auto-layout.js
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index = Path('_site/index.html')
+          html = index.read_text(encoding='utf-8')
+          marker = '<script src="auto-layout.js"></script>'
+          if marker not in html:
+              target = '<script src="app.js"></script>'
+              if target not in html:
+                  raise SystemExit('app.js script tag not found')
+              html = html.replace(target, target + marker, 1)
+          index.write_text(html, encoding='utf-8')
+
+          sw = Path('_site/sw.js')
+          if sw.exists():
+              text = sw.read_text(encoding='utf-8')
+              text = text.replace("const CACHE='cr3atix-map-v1.16.5'", "const CACHE='cr3atix-map-v1.16.6-autolayout'")
+              if "'./auto-layout.js'" not in text:
+                  text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
+              sw.write_text(text, encoding='utf-8')
+          PY
           touch _site/.nojekyll
 
-      - name: Snapshot extracted source for layout audit
+      - name: Remove temporary source audit
         shell: bash
         run: |
           set -euo pipefail
-          rm -rf .source-audit
-          mkdir -p .source-audit
-          cp _site/index.html .source-audit/index.html
-          find _site -maxdepth 2 -type f \( -name '*.js' -o -name '*.css' \) -print0 | while IFS= read -r -d '' file; do
-            rel="${file#_site/}"
-            mkdir -p ".source-audit/$(dirname "$rel")"
-            cp "$file" ".source-audit/$rel"
-          done
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add .source-audit
-          if ! git diff --cached --quiet; then
-            git commit -m "Snapshot CR3@TIX source for layout audit"
+          if [ -d .source-audit ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git rm -r .source-audit
+            git commit -m "Remove temporary CR3@TIX source audit"
             git push
           fi
 
