@@ -50,23 +50,21 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-
           index = Path('_site/index.html')
           html = index.read_text(encoding='utf-8')
           target = '<script src="app.js"></script>'
           layout = '<script src="auto-layout.js"></script>'
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
-          card = '<script src="business-card.js?v=1.16.13"></script>'
-
+          card = '<script src="business-card.js?v=1.16.14"></script>'
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
           for old in [
               '<script src="business-card.js?v=1.16.11"></script>',
               '<script src="business-card.js?v=1.16.12"></script>',
+              '<script src="business-card.js?v=1.16.13"></script>',
               '<script src="business-card.js"></script>'
           ]:
               html = html.replace(old, card)
-
           if layout not in html:
               html = html.replace(target, target + layout, 1)
           if remote not in html:
@@ -79,7 +77,7 @@ jobs:
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
               import re
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.13-business-card-fresh", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.14-business-card-zoom", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
