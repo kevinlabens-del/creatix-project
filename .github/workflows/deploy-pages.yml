@@ -52,6 +52,8 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
+
           index = Path('_site/index.html')
           html = index.read_text(encoding='utf-8')
           target = '<script src="app.js"></script>'
@@ -59,30 +61,13 @@ jobs:
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
-          neon = '<script src="neon-cards.js?v=1.16.20"></script>'
+          neon = '<script src="neon-cards.js?v=1.16.21"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
-          for old in [
-              '<script src="business-card.js?v=1.16.11"></script>',
-              '<script src="business-card.js?v=1.16.12"></script>',
-              '<script src="business-card.js?v=1.16.13"></script>',
-              '<script src="business-card.js"></script>'
-          ]:
-              html = html.replace(old, card)
-          for old in [
-              '<script src="fullscreen-landscape.js"></script>',
-              '<script src="fullscreen-landscape.js?v=1.16.14"></script>',
-              '<script src="fullscreen-landscape.js?v=1.16.15"></script>'
-          ]:
-              html = html.replace(old, fullscreen)
-          for old in [
-              '<script src="neon-cards.js"></script>',
-              '<script src="neon-cards.js?v=1.16.17"></script>',
-              '<script src="neon-cards.js?v=1.16.18"></script>',
-              '<script src="neon-cards.js?v=1.16.19"></script>'
-          ]:
-              html = html.replace(old, neon)
+          html = re.sub(r'<script src="business-card\.js(?:\?v=[^"]+)?"></script>', card, html)
+          html = re.sub(r'<script src="fullscreen-landscape\.js(?:\?v=[^"]+)?"></script>', fullscreen, html)
+          html = re.sub(r'<script src="neon-cards\.js(?:\?v=[^"]+)?"></script>', neon, html)
 
           if layout not in html:
               html = html.replace(target, target + layout, 1)
@@ -99,8 +84,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              import re
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.20-neon-outer-panels", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.21-neon-all-vignettes", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
