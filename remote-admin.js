@@ -6,6 +6,7 @@
 
   const ENDPOINT = 'https://gwqojqwcbwoulxrctaqz.supabase.co/functions/v1/cr3atix-admin';
   let busy = false;
+  let activePin = null;
 
   const cloneState = value => JSON.parse(JSON.stringify(value));
 
@@ -56,8 +57,9 @@
         if (input.value.length !== 4) { error.textContent = 'Entre les 4 chiffres.'; input.focus(); return; }
         ok.disabled = true; cancel.disabled = true; error.textContent = 'Vérification…';
         try {
-          const result = await submitPin(input.value);
-          if (result === true) return close(true);
+          const pin = input.value;
+          const result = await submitPin(pin);
+          if (result === true) return close(pin);
           error.textContent = result || 'Code incorrect. Réessaie.';
           input.value = ''; input.focus();
         } catch {
@@ -70,32 +72,54 @@
     });
   }
 
-  async function postState(pin, nextNodes) {
+  async function callServer(payload) {
     const response = await fetch(ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'write', pin, nodes: nextNodes }),
+      body: JSON.stringify(payload),
       cache: 'no-store'
     });
     let body = {};
     try { body = await response.json(); } catch {}
+    return { response, body };
+  }
+
+  async function verifyPin(pin) {
+    const { response, body } = await callServer({ action: 'verify', pin });
+    if (response.ok && body.ok === true) return true;
+    return body.error === 'Code incorrect' ? 'Code incorrect. Réessaie.' : (body.error || 'Échec de la vérification.');
+  }
+
+  async function postState(pin, nextNodes) {
+    const { response, body } = await callServer({ action: 'write', pin, nodes: nextNodes });
     if (!response.ok || body.ok !== true) return { ok: false, error: body.error || 'Échec de la vérification.' };
     return { ok: true, nodes: body.nodes };
   }
 
-  async function commitWithPin(action, nextNodes, successMessage) {
-    if (busy) return false;
+  async function requestAdminPin(action) {
+    if (busy) return null;
     busy = true;
-    let acceptedNodes = null;
-    const accepted = await pinDialog(action, async pin => {
-      const result = await postState(pin, nextNodes);
-      if (!result.ok) return result.error === 'Code incorrect' ? 'Code incorrect. Réessaie.' : result.error;
-      acceptedNodes = result.nodes;
-      return true;
-    });
-    busy = false;
-    if (!accepted || !Array.isArray(acceptedNodes)) return false;
-    nodes = acceptedNodes;
+    try {
+      return await pinDialog(action, verifyPin);
+    } finally {
+      busy = false;
+    }
+  }
+
+  async function commitAuthorized(nextNodes, successMessage, fallbackAction) {
+    let pin = activePin;
+    if (!pin) pin = await requestAdminPin(fallbackAction);
+    if (!pin) return false;
+
+    const result = await postState(pin, nextNodes);
+    if (!result.ok) {
+      activePin = null;
+      if (typeof toast === 'function') toast(result.error === 'Code incorrect' ? 'Code administrateur refusé' : result.error);
+      return false;
+    }
+
+    nodes = result.nodes;
+    activePin = null;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nodes)); } catch {}
     render();
     if (typeof toast === 'function') toast(successMessage);
@@ -117,8 +141,30 @@
     }
   }
 
+  // Gate the editor itself: PIN is required before add/edit UI opens.
+  const originalOpenEditor = openEditor;
+  openEditor = async function protectedOpenEditor(n) {
+    const pin = await requestAdminPin('Modifier ce projet');
+    if (!pin) return;
+    activePin = pin;
+    originalOpenEditor(n);
+  };
+
+  const originalOpenNew = openNew;
+  openNew = async function protectedOpenNew(parent) {
+    const pin = await requestAdminPin('Ajouter un projet');
+    if (!pin) return;
+    activePin = pin;
+    originalOpenNew(parent);
+  };
+
+  // If the editor is closed/cancelled, forget the PIN immediately.
+  dialog.addEventListener('close', () => { activePin = null; });
+  dialog.addEventListener('cancel', () => { activePin = null; });
+
+  // Capture submit before the original localStorage-only handler.
   nodeForm.addEventListener('submit', async e => {
-    if (e.submitter?.value === 'cancel') return;
+    if (e.submitter?.value === 'cancel') { activePin = null; return; }
     e.preventDefault();
     e.stopImmediatePropagation();
 
@@ -145,15 +191,23 @@
       const siblings = next.filter(n => n.parent === parent);
       next.push({ id: 'n' + Date.now(), parent, ...obj, x: (p?.x || 900) - 520, y: (p?.y || 400) + siblings.length * 245 });
     }
-    const ok = await commitWithPin(id ? 'Modifier ce projet' : 'Ajouter ce projet', next, id ? 'Projet modifié' : 'Projet ajouté');
+
+    const ok = await commitAuthorized(next, id ? 'Projet modifié' : 'Projet ajouté', id ? 'Modifier ce projet' : 'Ajouter ce projet');
     if (ok) dialog.close();
   }, true);
 
+  // Delete is also server-authorized. Normally it reuses the PIN that opened the editor.
   deleteBtn.addEventListener('click', async e => {
     e.preventDefault();
     e.stopImmediatePropagation();
     const id = editId.value;
     if (!id || id === 'root') return;
+
+    let pin = activePin;
+    if (!pin) pin = await requestAdminPin('Supprimer ce projet');
+    if (!pin) return;
+    activePin = pin;
+
     const ids = new Set([id]);
     let changed = true;
     while (changed) {
@@ -161,7 +215,7 @@
       for (const n of nodes) if (n.parent && ids.has(n.parent) && !ids.has(n.id)) { ids.add(n.id); changed = true; }
     }
     const next = cloneState(nodes).filter(n => !ids.has(n.id));
-    const ok = await commitWithPin('Supprimer ce projet', next, 'Projet supprimé');
+    const ok = await commitAuthorized(next, 'Projet supprimé', 'Supprimer ce projet');
     if (ok) dialog.close();
   }, true);
 
