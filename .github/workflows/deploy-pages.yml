@@ -49,6 +49,8 @@ jobs:
           cp fullscreen-landscape.js _site/fullscreen-landscape.js
           cp neon-cards.js _site/neon-cards.js
           cp business-card.jpg _site/business-card-v2.jpg
+          cp cosmic-background.css _site/cosmic-background.css
+          cp energy-transfer.js _site/energy-transfer.js
 
           python3 - <<'PY'
           from pathlib import Path
@@ -73,6 +75,9 @@ jobs:
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
+          cosmic_css = '<link rel="stylesheet" href="cosmic-background.css">'
+          energy = '<script src="energy-transfer.js"></script>'
+          cosmic_canvas = '<canvas id="cosmicCanvas" class="cosmic-canvas" aria-hidden="true"></canvas>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -80,6 +85,12 @@ jobs:
           html = re.sub(r'<script src="fullscreen-landscape\.js(?:\?v=[^"]+)?"></script>', fullscreen, html)
           html = re.sub(r'<script src="neon-cards\.js(?:\?v=[^"]+)?"></script>', neon, html)
           html = re.sub(r'<script src="extra-zoom\.js(?:\?v=[^"]+)?"></script>', '', html)
+          if cosmic_css not in html:
+              html = html.replace('</head>', cosmic_css + '</head>', 1)
+          if 'id="cosmicCanvas"' not in html:
+              html = html.replace('<main id="viewport" class="viewport">', '<main id="viewport" class="viewport">' + cosmic_canvas, 1)
+          if energy not in html:
+              html = html.replace(target, energy + target, 1)
           if layout not in html: html = html.replace(target, target + layout, 1)
           if remote not in html: html = html.replace(layout, layout + remote, 1)
           if card not in html: html = html.replace(remote, remote + card, 1)
@@ -90,7 +101,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.26-native-zoom-022", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.26-galaxy-restored", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -100,6 +111,8 @@ jobs:
               elif "'./business-card-v2.jpg'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
               if "'./fullscreen-landscape.js'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
               if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
+              if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
+              if "'./energy-transfer.js'" not in text: text = text.replace("'./app.js'", "'./energy-transfer.js','./app.js'")
               sw.write_text(text, encoding='utf-8')
           PY
           touch _site/.nojekyll
