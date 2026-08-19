@@ -47,6 +47,7 @@ jobs:
           cp remote-admin.js _site/remote-admin.js
           cp business-card.js _site/business-card.js
           cp fullscreen-landscape.js _site/fullscreen-landscape.js
+          cp neon-cards.js _site/neon-cards.js
           cp business-card.jpg _site/business-card-v2.jpg
 
           python3 - <<'PY'
@@ -58,6 +59,7 @@ jobs:
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
+          neon = '<script src="neon-cards.js?v=1.16.17"></script>'
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
           for old in [
@@ -81,13 +83,15 @@ jobs:
               html = html.replace(remote, remote + card, 1)
           if fullscreen not in html:
               html = html.replace(card, card + fullscreen, 1)
+          if neon not in html:
+              html = html.replace(fullscreen, fullscreen + neon, 1)
           index.write_text(html, encoding='utf-8')
 
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
               import re
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.16-fullscreen-button-align", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.17-neon-cards", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -100,6 +104,8 @@ jobs:
                   text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
               if "'./fullscreen-landscape.js'" not in text:
                   text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
+              if "'./neon-cards.js'" not in text:
+                  text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
               sw.write_text(text, encoding='utf-8')
           PY
           touch _site/.nojekyll
