@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -44,6 +44,26 @@ jobs:
           test -f _site/index.html
           touch _site/.nojekyll
 
+      - name: Snapshot extracted source for layout audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf .source-audit
+          mkdir -p .source-audit
+          cp _site/index.html .source-audit/index.html
+          find _site -maxdepth 2 -type f \( -name '*.js' -o -name '*.css' \) -print0 | while IFS= read -r -d '' file; do
+            rel="${file#_site/}"
+            mkdir -p ".source-audit/$(dirname "$rel")"
+            cp "$file" ".source-audit/$rel"
+          done
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .source-audit
+          if ! git diff --cached --quiet; then
+            git commit -m "Snapshot CR3@TIX source for layout audit"
+            git push
+          fi
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
@@ -55,5 +75,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
-# retrigger after enabling GitHub Actions as Pages source
