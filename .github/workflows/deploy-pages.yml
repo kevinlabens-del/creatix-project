@@ -59,7 +59,7 @@ jobs:
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
-          neon = '<script src="neon-cards.js?v=1.16.19"></script>'
+          neon = '<script src="neon-cards.js?v=1.16.20"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -79,7 +79,8 @@ jobs:
           for old in [
               '<script src="neon-cards.js"></script>',
               '<script src="neon-cards.js?v=1.16.17"></script>',
-              '<script src="neon-cards.js?v=1.16.18"></script>'
+              '<script src="neon-cards.js?v=1.16.18"></script>',
+              '<script src="neon-cards.js?v=1.16.19"></script>'
           ]:
               html = html.replace(old, neon)
 
@@ -99,7 +100,7 @@ jobs:
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
               import re
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.19-neon-all-cards", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.20-neon-outer-panels", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
