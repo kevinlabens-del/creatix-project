@@ -57,7 +57,7 @@ jobs:
           layout = '<script src="auto-layout.js"></script>'
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
-          fullscreen = '<script src="fullscreen-landscape.js?v=1.16.15"></script>'
+          fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
           for old in [
@@ -69,7 +69,8 @@ jobs:
               html = html.replace(old, card)
           for old in [
               '<script src="fullscreen-landscape.js"></script>',
-              '<script src="fullscreen-landscape.js?v=1.16.14"></script>'
+              '<script src="fullscreen-landscape.js?v=1.16.14"></script>',
+              '<script src="fullscreen-landscape.js?v=1.16.15"></script>'
           ]:
               html = html.replace(old, fullscreen)
           if layout not in html:
@@ -86,7 +87,7 @@ jobs:
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
               import re
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.15-fullscreen-landscape", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.16-fullscreen-button-align", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
