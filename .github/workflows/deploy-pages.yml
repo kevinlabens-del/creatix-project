@@ -48,6 +48,7 @@ jobs:
           cp business-card.js _site/business-card.js
           cp fullscreen-landscape.js _site/fullscreen-landscape.js
           cp neon-cards.js _site/neon-cards.js
+          cp extra-zoom.js _site/extra-zoom.js
           cp business-card.jpg _site/business-card-v2.jpg
 
           python3 - <<'PY'
@@ -62,12 +63,14 @@ jobs:
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
+          extra_zoom = '<script src="extra-zoom.js?v=1.16.24"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
           html = re.sub(r'<script src="business-card\.js(?:\?v=[^"]+)?"></script>', card, html)
           html = re.sub(r'<script src="fullscreen-landscape\.js(?:\?v=[^"]+)?"></script>', fullscreen, html)
           html = re.sub(r'<script src="neon-cards\.js(?:\?v=[^"]+)?"></script>', neon, html)
+          html = re.sub(r'<script src="extra-zoom\.js(?:\?v=[^"]+)?"></script>', extra_zoom, html)
 
           if layout not in html:
               html = html.replace(target, target + layout, 1)
@@ -79,12 +82,14 @@ jobs:
               html = html.replace(card, card + fullscreen, 1)
           if neon not in html:
               html = html.replace(fullscreen, fullscreen + neon, 1)
+          if extra_zoom not in html:
+              html = html.replace(neon, neon + extra_zoom, 1)
           index.write_text(html, encoding='utf-8')
 
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.21-neon-all-vignettes", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.24-extra-zoom", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -99,6 +104,8 @@ jobs:
                   text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
               if "'./neon-cards.js'" not in text:
                   text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
+              if "'./extra-zoom.js'" not in text:
+                  text = text.replace("'./neon-cards.js'", "'./neon-cards.js','./extra-zoom.js'")
               sw.write_text(text, encoding='utf-8')
           PY
           touch _site/.nojekyll
