@@ -1,4 +1,4 @@
-/* CR3@TIX MAP — smooth animated blue/violet neon frame on every map vignette */
+/* CR3@TIX MAP — neon blue/violet frame on every map vignette */
 (() => {
   'use strict';
 
@@ -10,71 +10,23 @@
       document.head.appendChild(style);
     }
     style.textContent = `
-      @property --cr3-neon-angle {
-        syntax: '<angle>';
-        inherits: false;
-        initial-value: 0deg;
-      }
-      @keyframes cr3-neon-orbit {
-        from { --cr3-neon-angle: 0deg; }
-        to { --cr3-neon-angle: 360deg; }
-      }
-      @keyframes cr3-neon-breathe {
-        0%,100% { opacity:.56; filter:blur(7px); }
-        50% { opacity:.72; filter:blur(9px); }
-      }
-
       .cr3-neon-target{
-        position:relative !important;
-        isolation:isolate;
-        outline:none !important;
-        overflow:visible !important;
-        box-shadow:0 16px 34px rgba(0,0,0,.38) !important;
+        outline:3px solid rgba(82,176,255,.96) !important;
+        outline-offset:-1px !important;
+        box-shadow:
+          0 0 0 2px rgba(167,88,255,.62),
+          0 0 14px rgba(61,148,255,.58),
+          0 0 30px rgba(146,65,255,.42),
+          0 16px 34px rgba(0,0,0,.38) !important;
+        transition:box-shadow .2s ease,outline-color .2s ease,transform .2s ease !important;
       }
-      .cr3-neon-target::before,
-      .cr3-neon-target::after{
-        content:'';
-        position:absolute;
-        pointer-events:none;
-        inset:-4px;
-        border-radius:inherit;
-        padding:3px;
-        background:conic-gradient(
-          from var(--cr3-neon-angle),
-          #35bfff 0deg,
-          #35bfff 35deg,
-          #625cff 95deg,
-          #a14dff 150deg,
-          #8d46ff 210deg,
-          #4f7dff 270deg,
-          #35bfff 330deg,
-          #35bfff 360deg
-        );
-        -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-        -webkit-mask-composite:xor;
-        mask-composite:exclude;
-        animation:cr3-neon-orbit 11s linear infinite;
-        will-change:background;
-        z-index:2;
-      }
-      .cr3-neon-target::after{
-        inset:-7px;
-        padding:6px;
-        opacity:.62;
-        filter:blur(8px);
-        z-index:1;
-        animation:cr3-neon-orbit 11s linear infinite,cr3-neon-breathe 5.5s ease-in-out infinite;
-      }
-      .cr3-neon-target:hover::before,
-      .cr3-neon-target:focus-within::before{
-        filter:brightness(1.08);
-      }
-      .cr3-neon-target:hover::after,
-      .cr3-neon-target:focus-within::after{
-        opacity:.72;
-      }
-      @media (prefers-reduced-motion: reduce){
-        .cr3-neon-target::before,.cr3-neon-target::after{animation:none}
+      .cr3-neon-target:hover,.cr3-neon-target:focus-within{
+        outline-color:rgba(188,112,255,1) !important;
+        box-shadow:
+          0 0 0 2px rgba(82,196,255,.8),
+          0 0 19px rgba(64,160,255,.72),
+          0 0 40px rgba(164,72,255,.56),
+          0 18px 42px rgba(0,0,0,.44) !important;
       }
     `;
   }
@@ -117,14 +69,21 @@
     if(!world) return;
 
     const targets=new Set();
+
+    // 1) Explicit semantic/card-like nodes.
     world.querySelectorAll('[class*="card" i],[class*="node" i],[class*="project" i],[class*="branch" i],[class*="tile" i],[class*="panel" i],[data-id],[data-node],[data-key],[data-project]').forEach(el=>{
       const p=climbToPanel(el,world);
       if(p) targets.add(p);
     });
+
+    // 2) Start from every interactive element (OUVRIR buttons, clickable category cards, etc.)
+    // and climb to the outer visual panel containing it.
     world.querySelectorAll('button,a,[role="button"],[tabindex]').forEach(el=>{
       const p=climbToPanel(el,world);
       if(p) targets.add(p);
     });
+
+    // 3) Final visual pass: catch category/root panels even when they are not interactive.
     world.querySelectorAll('*').forEach(el=>{
       if(isReasonablePanel(el,world)){
         const p=climbToPanel(el,world);
@@ -132,6 +91,7 @@
       }
     });
 
+    // Remove nested false positives: keep the visually outer panel for each card.
     const arr=[...targets];
     arr.forEach(el=>{
       const outer=arr.find(other=>other!==el&&other.contains(el)&&isReasonablePanel(other,world));
