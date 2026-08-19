@@ -61,7 +61,7 @@ jobs:
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
-          neon = '<script src="neon-cards.js?v=1.16.23"></script>'
+          neon = '<script src="neon-cards.js?v=1.16.21"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -84,7 +84,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.23-neon-orbit-smooth", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.21-neon-all-vignettes", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               if "'./auto-layout.js'" not in text:
                   text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
