@@ -1,4 +1,4 @@
-/* CR3@TIX MAP — animated blue/violet neon frame on every map vignette */
+/* CR3@TIX MAP — smooth animated blue/violet neon frame on every map vignette */
 (() => {
   'use strict';
 
@@ -16,11 +16,12 @@
         initial-value: 0deg;
       }
       @keyframes cr3-neon-orbit {
+        from { --cr3-neon-angle: 0deg; }
         to { --cr3-neon-angle: 360deg; }
       }
       @keyframes cr3-neon-breathe {
-        0%,100% { opacity:.78; filter:blur(7px); }
-        50% { opacity:1; filter:blur(10px); }
+        0%,100% { opacity:.56; filter:blur(7px); }
+        50% { opacity:.72; filter:blur(9px); }
       }
 
       .cr3-neon-target{
@@ -40,35 +41,37 @@
         padding:3px;
         background:conic-gradient(
           from var(--cr3-neon-angle),
-          #3bbcff 0deg,
-          #655cff 55deg,
-          #a64dff 120deg,
-          #5b36ff 180deg,
-          #2fc8ff 235deg,
-          #7a5cff 300deg,
-          #3bbcff 360deg
+          #35bfff 0deg,
+          #35bfff 35deg,
+          #625cff 95deg,
+          #a14dff 150deg,
+          #8d46ff 210deg,
+          #4f7dff 270deg,
+          #35bfff 330deg,
+          #35bfff 360deg
         );
         -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
         -webkit-mask-composite:xor;
         mask-composite:exclude;
-        animation:cr3-neon-orbit 3.4s linear infinite;
+        animation:cr3-neon-orbit 11s linear infinite;
+        will-change:background;
         z-index:2;
       }
       .cr3-neon-target::after{
         inset:-7px;
         padding:6px;
-        opacity:.85;
+        opacity:.62;
         filter:blur(8px);
         z-index:1;
-        animation:cr3-neon-orbit 3.4s linear infinite,cr3-neon-breathe 2.2s ease-in-out infinite;
+        animation:cr3-neon-orbit 11s linear infinite,cr3-neon-breathe 5.5s ease-in-out infinite;
       }
       .cr3-neon-target:hover::before,
       .cr3-neon-target:focus-within::before{
-        animation-duration:2.1s;
+        filter:brightness(1.08);
       }
       .cr3-neon-target:hover::after,
       .cr3-neon-target:focus-within::after{
-        animation-duration:2.1s,1.4s;
+        opacity:.72;
       }
       @media (prefers-reduced-motion: reduce){
         .cr3-neon-target::before,.cr3-neon-target::after{animation:none}
