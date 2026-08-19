@@ -53,7 +53,6 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           index = Path('_site/index.html')
           html = index.read_text(encoding='utf-8')
           target = '<script src="app.js"></script>'
@@ -62,57 +61,51 @@ jobs:
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
-
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
           html = re.sub(r'<script src="business-card\.js(?:\?v=[^"]+)?"></script>', card, html)
           html = re.sub(r'<script src="fullscreen-landscape\.js(?:\?v=[^"]+)?"></script>', fullscreen, html)
           html = re.sub(r'<script src="neon-cards\.js(?:\?v=[^"]+)?"></script>', neon, html)
           html = re.sub(r'<script src="extra-zoom\.js(?:\?v=[^"]+)?"></script>', '', html)
-
-          if layout not in html:
-              html = html.replace(target, target + layout, 1)
-          if remote not in html:
-              html = html.replace(layout, layout + remote, 1)
-          if card not in html:
-              html = html.replace(remote, remote + card, 1)
-          if fullscreen not in html:
-              html = html.replace(card, card + fullscreen, 1)
-          if neon not in html:
-              html = html.replace(fullscreen, fullscreen + neon, 1)
+          if layout not in html: html = html.replace(target, target + layout, 1)
+          if remote not in html: html = html.replace(layout, layout + remote, 1)
+          if card not in html: html = html.replace(remote, remote + card, 1)
+          if fullscreen not in html: html = html.replace(card, card + fullscreen, 1)
+          if neon not in html: html = html.replace(fullscreen, fullscreen + neon, 1)
           index.write_text(html, encoding='utf-8')
-
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
               text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.25-restore-map", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
-              if "'./auto-layout.js'" not in text:
-                  text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
-              if "'./remote-admin.js'" not in text:
-                  text = text.replace("'./auto-layout.js'", "'./auto-layout.js','./remote-admin.js'")
+              if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
+              if "'./remote-admin.js'" not in text: text = text.replace("'./auto-layout.js'", "'./auto-layout.js','./remote-admin.js'")
               text = text.replace("'./business-card.jpg'", "'./business-card-v2.jpg'")
-              if "'./business-card.js'" not in text:
-                  text = text.replace("'./remote-admin.js'", "'./remote-admin.js','./business-card.js','./business-card-v2.jpg'")
-              elif "'./business-card-v2.jpg'" not in text:
-                  text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
-              if "'./fullscreen-landscape.js'" not in text:
-                  text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
-              if "'./neon-cards.js'" not in text:
-                  text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
+              if "'./business-card.js'" not in text: text = text.replace("'./remote-admin.js'", "'./remote-admin.js','./business-card.js','./business-card-v2.jpg'")
+              elif "'./business-card-v2.jpg'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
+              if "'./fullscreen-landscape.js'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
+              if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
               sw.write_text(text, encoding='utf-8')
           PY
           touch _site/.nojekyll
 
+      - name: Export app source for zoom audit
+        shell: bash
+        run: |
+          cp _site/app.js app-source-debug.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add app-source-debug.js
+          git commit -m "Export app source for zoom audit" || true
+          git push || true
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
-
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: ./_site
-
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
