@@ -8,11 +8,29 @@
     const style = document.createElement('style');
     style.textContent = `
       #cr3-fullscreen-landscape{
-        position:fixed;top:max(18px,env(safe-area-inset-top));right:148px;z-index:100000;
-        width:54px;height:54px;border:1px solid rgba(160,255,200,.22);border-radius:16px;
-        background:rgba(8,34,25,.9);color:#ecfff4;display:flex;align-items:center;justify-content:center;
-        font:700 24px/1 system-ui,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.28);cursor:pointer;
-        -webkit-tap-highlight-color:transparent;backdrop-filter:blur(8px)
+        position:fixed;
+        top:max(8px,env(safe-area-inset-top));
+        right:101px;
+        z-index:100000;
+        width:36px;
+        height:36px;
+        min-width:36px;
+        min-height:36px;
+        padding:0;
+        margin:0;
+        border:1px solid rgba(160,255,200,.22);
+        border-radius:12px;
+        background:rgba(8,34,25,.9);
+        color:#ecfff4;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font:700 18px/1 system-ui,sans-serif;
+        box-shadow:none;
+        cursor:pointer;
+        -webkit-tap-highlight-color:transparent;
+        backdrop-filter:blur(8px);
+        box-sizing:border-box;
       }
       #cr3-fullscreen-landscape:active{transform:scale(.96)}
       #cr3-fullscreen-landscape.active{color:#b9ff4f;border-color:rgba(185,255,79,.5)}
@@ -23,7 +41,9 @@
         opacity:0;pointer-events:none;transition:opacity .2s ease
       }
       #cr3-fullscreen-toast.show{opacity:1}
-      @media (max-width:720px){#cr3-fullscreen-landscape{right:152px;width:52px;height:52px;border-radius:15px}}
+      @media (min-width:721px){
+        #cr3-fullscreen-landscape{top:10px;right:146px;width:36px;height:36px;min-width:36px;min-height:36px;border-radius:12px}
+      }
     `;
     document.head.appendChild(style);
 
@@ -56,7 +76,6 @@
           if (root.requestFullscreen) await root.requestFullscreen({ navigationUI: 'hide' });
           else if (root.webkitRequestFullscreen) root.webkitRequestFullscreen();
         }
-
         if (screen.orientation && screen.orientation.lock) {
           try { await screen.orientation.lock('landscape'); }
           catch (_) { notify('Plein écran activé — tourne le téléphone en paysage si nécessaire.'); }
