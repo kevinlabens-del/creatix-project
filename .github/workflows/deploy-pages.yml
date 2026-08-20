@@ -56,8 +56,6 @@ jobs:
           from pathlib import Path
           import re
 
-          # Native MAP zoom only: lower the existing minimum scale from 0.28 to 0.22.
-          # This changes the app's own fit/wheel/pinch limits and does NOT add any CSS scale layer.
           app = Path('_site/app.js')
           js = app.read_text(encoding='utf-8')
           old = 'Math.max(.28,Math.min('
@@ -65,9 +63,6 @@ jobs:
           if count != 3:
               raise SystemExit(f'Expected 3 native zoom clamps, found {count}; refusing unsafe patch')
           js = js.replace(old, 'Math.max(.22,Math.min(')
-
-          # Remove only the two helper texts requested from the UI.
-          # Keep every map control, card, galaxy effect and interaction untouched.
           js = js.replace('Toucher pour agrandir', '')
           js = re.sub(r'(["\'])Glisser pour naviguer[^"\'\n]*\1', r'\1\1', js)
           app.write_text(js, encoding='utf-8')
@@ -76,6 +71,10 @@ jobs:
           html = index.read_text(encoding='utf-8')
           html = html.replace('Toucher pour agrandir', '')
           html = re.sub(r'Glisser pour naviguer[^<]*', '', html)
+          # Hide helper/toast UI containers that can re-inject the expand hint at runtime.
+          helper_css = '<style id="cr3atix-helper-cleanup">.hint,.helper,.instructions,.instruction,.toast,.zoom-hint,.expand-hint,[class*="hint"],[class*="helper"],[class*="instruction"]{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}</style>'
+          if 'id="cr3atix-helper-cleanup"' not in html:
+              html = html.replace('</head>', helper_css + '</head>', 1)
           target = '<script src="app.js"></script>'
           layout = '<script src="auto-layout.js"></script>'
           remote = '<script src="remote-admin.js?v=1.16.10"></script>'
@@ -108,7 +107,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.27-texts-clean", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.28-helper-clean", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
