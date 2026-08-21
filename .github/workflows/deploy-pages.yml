@@ -86,9 +86,9 @@ jobs:
           cosmic_css = '<link rel="stylesheet" href="cosmic-background.css">'
           energy = '<script src="energy-transfer.js"></script>'
           cosmic_canvas = '<canvas id="cosmicCanvas" class="cosmic-canvas" aria-hidden="true"></canvas>'
-          nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.3.1">'
+          nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.4.0">'
           nyxel_map_css = '<link rel="stylesheet" href="nyxel-map.css?v=1.0.0">'
-          nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.0.0"></script><script src="nyxel-widget/nyxel.js?v=1.3.1"></script>'
+          nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.4.0"></script><script src="nyxel-widget/nyxel.js?v=1.4.0"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -115,7 +115,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.29-nyxel", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.30-nyxel-1.4.0", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
