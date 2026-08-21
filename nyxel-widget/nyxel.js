@@ -1,5 +1,5 @@
 /**
- * NYXEL Interactive Avatar Widget v1.3.1
+ * NYXEL Interactive Avatar Widget v1.4.0
  * Autonomous, dependency-free, static-hosting friendly.
  */
 (function nyxelBootstrap() {
@@ -9,7 +9,7 @@
     return;
   }
 
-  var VERSION = "1.3.1";
+  var VERSION = "1.4.0";
   var SCRIPT = document.currentScript || Array.prototype.slice.call(document.scripts).find(function (item) {
     return /(?:^|\/)nyxel\.js(?:\?|#|$)/.test(item.src || "");
   });
@@ -34,6 +34,21 @@
     THINK: "nyxel-think.png"
   };
 
+  // A shuffled bag guarantees visual variety. Every organic pose is shown
+  // once before the bag is refilled, and the last two poses cannot be picked
+  // again at the boundary between two bags.
+  var ORGANIC_POSES = [
+    { state: "IDLE_ALT", minHold: 850, maxHold: 1350 },
+    { state: "LOOK_LEFT", minHold: 1200, maxHold: 1900 },
+    { state: "LOOK_RIGHT", minHold: 1200, maxHold: 1900 },
+    { state: "LOOK_UP", minHold: 1200, maxHold: 1900 },
+    { state: "CURIOUS", minHold: 1400, maxHold: 2200 },
+    { state: "THINK", minHold: 1800, maxHold: 2600 },
+    { state: "ACTIVE", minHold: 900, maxHold: 1500 },
+    { state: "SURPRISED", minHold: 850, maxHold: 1400 },
+    { state: "WAVE", minHold: 1100, maxHold: 1800 }
+  ];
+
   var DEFAULTS = {
     name: "NYXEL",
     email: "creatixprojet@gmail.com",
@@ -51,11 +66,11 @@
     signature: {
       enabled: true,
       chance: 1,
-      minDelay: 120000,
-      maxDelay: 300000,
+      minDelay: 75000,
+      maxDelay: 135000,
       duration: 4800,
       asset: "nyxel-signature.png",
-      sessionKey: "nyxel-cr3atix-signature-v1"
+      sessionKey: "nyxel-cr3atix-signature-v2"
     },
     sounds: false,
     contactLabel: "Contacter CR3@TIX",
@@ -176,8 +191,13 @@
   }
 
   var mediaReduced = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : null;
+  var mediaHover = window.matchMedia ? window.matchMedia("(hover: hover) and (pointer: fine)") : null;
   var reducedMotion = Boolean(mediaReduced && mediaReduced.matches);
   var motionEnabled = config.animations && !reducedMotion;
+  var hoverCapable = Boolean(mediaHover && mediaHover.matches);
+  var userAgent = String(window.navigator && window.navigator.userAgent || "");
+  var referrer = String(document.referrer || "");
+  var embeddedWebView = /FBAN|FBAV|Instagram|;\s*wv\)/i.test(userAgent) || /^android-app:\/\/com\.facebook\./i.test(referrer);
   var root = null;
   var avatarButton = null;
   var panel = null;
@@ -212,7 +232,15 @@
   var lastActivitySignalAt = 0;
   var lastActivityPulseAt = 0;
   var signaturePlaying = false;
+  var signatureStarted = false;
   var signatureDecision = null;
+  var signatureDueAt = 0;
+  var organicBag = [];
+  var organicHistory = [];
+  var preloadQueue = [];
+  var preloadIndex = 0;
+  var preloadActive = 0;
+  var preloadStarted = false;
 
   function setTimer(callback, delay) {
     var timer = window.setTimeout(function () {
@@ -250,9 +278,11 @@
     root.id = "nyxel-widget";
     root.dataset.position = config.position;
     root.dataset.state = "IDLE";
+    root.dataset.renderer = embeddedWebView ? "safe" : "standard";
     root.setAttribute("aria-live", "off");
     root.style.setProperty("--nyxel-scale", String(config.scale));
     root.style.zIndex = String(config.zIndex);
+    root.classList.toggle("nyxel-webview-safe", embeddedWebView);
 
     root.innerHTML = [
       '<button class="nyxel-avatar" type="button" aria-haspopup="dialog" aria-expanded="false" aria-controls="nyxel-contact-panel">',
@@ -346,29 +376,141 @@
     });
   }
 
+  function imageMatchesUrl(image, url) {
+    return Boolean(image && (image.currentSrc === url || image.src === url));
+  }
+
+  function decodeLoadedImage(image, label) {
+    if (!image || !image.complete || !image.naturalWidth) {
+      return Promise.reject(new Error("NYXEL image incomplete: " + label));
+    }
+    if (typeof image.decode !== "function") {
+      return Promise.resolve(image);
+    }
+
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timeout = setTimer(function () {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        if (image.complete && image.naturalWidth) {
+          resolve(image);
+        } else {
+          reject(new Error("NYXEL image decode timeout: " + label));
+        }
+      }, embeddedWebView ? 12000 : 8000);
+
+      function finish(error) {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimer(timeout);
+        if (!error || (image.complete && image.naturalWidth)) {
+          resolve(image);
+        } else {
+          reject(error);
+        }
+      }
+
+      try {
+        var decoding = image.decode();
+        if (!decoding || typeof decoding.then !== "function") {
+          finish(null);
+          return;
+        }
+        decoding.then(function () { finish(null); }, finish);
+      } catch (error) {
+        finish(error);
+      }
+    });
+  }
+
+  function waitForImageElement(image, url, label) {
+    return new Promise(function (resolve, reject) {
+      var settled = false;
+      var timeout = 0;
+
+      function cleanup() {
+        clearTimer(timeout);
+        image.removeEventListener("load", onLoad);
+        image.removeEventListener("error", onError);
+      }
+
+      function finish(error) {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        cleanup();
+        if (error) {
+          reject(error);
+        } else {
+          resolve(image);
+        }
+      }
+
+      function onLoad() {
+        if (settled || !imageMatchesUrl(image, url)) {
+          return;
+        }
+        decodeLoadedImage(image, label).then(function () {
+          finish(null);
+        }, finish);
+      }
+
+      function onError() {
+        if (!settled && imageMatchesUrl(image, url)) {
+          finish(new Error("NYXEL image unavailable: " + label));
+        }
+      }
+
+      image.addEventListener("load", onLoad);
+      image.addEventListener("error", onError);
+      timeout = setTimer(function () {
+        finish(new Error("NYXEL image load timeout: " + label));
+      }, embeddedWebView ? 15000 : 10000);
+
+      if (imageMatchesUrl(image, url) && image.complete && !image.naturalWidth) {
+        image.removeAttribute("src");
+        image.src = url;
+      } else if (!imageMatchesUrl(image, url)) {
+        image.src = url;
+      }
+      if (imageMatchesUrl(image, url) && image.complete && image.naturalWidth) {
+        setTimer(onLoad, 0);
+      }
+    });
+  }
+
   function ensureAsset(state) {
+    var url = assetUrl(state);
     if (loadedAssets[state]) {
-      return Promise.resolve(assetUrl(state));
+      return Promise.resolve(url);
     }
     if (assetFailures[state]) {
-      return Promise.reject(assetFailures[state]);
+      if (Date.now() - assetFailures[state].at < 5000) {
+        return Promise.reject(assetFailures[state].error);
+      }
+      delete assetFailures[state];
     }
     if (assetPromises[state]) {
       return assetPromises[state];
     }
-    assetPromises[state] = new Promise(function (resolve, reject) {
-      var image = new Image();
-      image.decoding = "async";
-      image.onload = function () {
-        loadedAssets[state] = true;
-        resolve(image.src);
-      };
-      image.onerror = function () {
-        var failure = new Error("NYXEL asset unavailable: " + ASSETS[state]);
-        assetFailures[state] = failure;
-        reject(failure);
-      };
-      image.src = assetUrl(state);
+
+    var loader = new Image();
+    loader.decoding = "async";
+    assetPromises[state] = waitForImageElement(loader, url, ASSETS[state]).then(function () {
+      loadedAssets[state] = true;
+      delete assetFailures[state];
+      delete assetPromises[state];
+      return url;
+    }, function (error) {
+      assetFailures[state] = { error: error, at: Date.now() };
+      delete assetPromises[state];
+      throw error;
     });
     return assetPromises[state];
   }
@@ -380,10 +522,16 @@
     }
     requestedState = normalized;
     var token = ++poseToken;
-    root.dataset.state = normalized;
 
-    if (normalized === currentState && imageLayers[currentLayer].src) {
-      return Promise.resolve(normalized);
+    var visibleLayer = imageLayers[currentLayer];
+    visibleLayer.classList.add("nyxel-is-visible");
+    if (normalized === currentState && imageMatchesUrl(visibleLayer, assetUrl(normalized)) && visibleLayer.complete && visibleLayer.naturalWidth) {
+      root.dataset.state = normalized;
+      return decodeLoadedImage(visibleLayer, ASSETS[normalized]).then(function () {
+        return normalized;
+      }, function () {
+        return normalized;
+      });
     }
 
     return ensureAsset(normalized).then(function (url) {
@@ -393,31 +541,43 @@
       var nextLayer = currentLayer === 0 ? 1 : 0;
       var incoming = imageLayers[nextLayer];
       var outgoing = imageLayers[currentLayer];
-      incoming.src = url;
       incoming.alt = "";
+      outgoing.classList.add("nyxel-is-visible");
+      incoming.classList.remove("nyxel-is-visible");
 
-      var swap = function () {
-        if (destroyed || token !== poseToken) {
-          return;
-        }
-        incoming.classList.add("nyxel-is-visible");
-        outgoing.classList.remove("nyxel-is-visible");
-        currentLayer = nextLayer;
-        currentState = normalized;
-        announceEvent("nyxel:statechange", { state: normalized });
-      };
+      return waitForImageElement(incoming, url, ASSETS[normalized]).then(function () {
+        return new Promise(function (resolve) {
+          var swap = function () {
+            if (destroyed || token !== poseToken) {
+              resolve(requestedState);
+              return;
+            }
+            incoming.classList.add("nyxel-is-visible");
+            outgoing.classList.remove("nyxel-is-visible");
+            currentLayer = nextLayer;
+            currentState = normalized;
+            root.dataset.state = normalized;
+            announceEvent("nyxel:statechange", { state: normalized });
+            resolve(normalized);
+          };
 
-      if (motionEnabled && !document.hidden) {
-        window.requestAnimationFrame(swap);
-      } else {
-        swap();
-      }
-      return normalized;
+          if (motionEnabled && !document.hidden) {
+            window.requestAnimationFrame(swap);
+          } else {
+            swap();
+          }
+        });
+      });
     }).catch(function (error) {
       if (config.debug && window.console) {
         console.warn(error.message);
       }
-      root.dataset.state = currentState;
+      if (token === poseToken) {
+        requestedState = currentState;
+        root.dataset.state = currentState;
+        imageLayers[currentLayer].classList.add("nyxel-is-visible");
+        announceEvent("nyxel:asseterror", { state: normalized, message: error.message });
+      }
       return currentState;
     });
   }
@@ -452,6 +612,39 @@
     setState(state, { hold: randomBetween(minimum, maximum), returnTo: "IDLE" });
   }
 
+  function refillOrganicBag() {
+    organicBag = ORGANIC_POSES.slice();
+    for (var index = organicBag.length - 1; index > 0; index -= 1) {
+      var swapIndex = Math.floor(Math.random() * (index + 1));
+      var temporary = organicBag[index];
+      organicBag[index] = organicBag[swapIndex];
+      organicBag[swapIndex] = temporary;
+    }
+  }
+
+  function nextOrganicPose() {
+    if (!organicBag.length) {
+      refillOrganicBag();
+    }
+
+    var candidateIndex = organicBag.length - 1;
+    if (organicHistory.indexOf(organicBag[candidateIndex].state) !== -1) {
+      for (var index = organicBag.length - 2; index >= 0; index -= 1) {
+        if (organicHistory.indexOf(organicBag[index].state) === -1) {
+          candidateIndex = index;
+          break;
+        }
+      }
+    }
+
+    var choice = organicBag.splice(candidateIndex, 1)[0];
+    organicHistory.push(choice.state);
+    if (organicHistory.length > 2) {
+      organicHistory.shift();
+    }
+    return choice;
+  }
+
   function scheduleOrganic() {
     clearTimer(organicTimer);
     organicTimer = 0;
@@ -460,9 +653,8 @@
     }
     organicTimer = setTimer(function () {
       organicTimer = 0;
-      var choices = ["IDLE_ALT", "LOOK_LEFT", "LOOK_RIGHT", "LOOK_UP", "CURIOUS", "CURIOUS", "THINK"];
-      var choice = choices[Math.floor(Math.random() * choices.length)];
-      enterTransient(choice, choice === "IDLE_ALT" ? 700 : 1150, choice === "THINK" ? 2500 : 2000);
+      var choice = nextOrganicPose();
+      enterTransient(choice.state, choice.minHold, choice.maxHold);
     }, randomBetween(config.reactionMinDelay, config.reactionMaxDelay));
   }
 
@@ -480,6 +672,41 @@
     } catch (error) {
       // Private browsing or a file preview may disable sessionStorage.
     }
+  }
+
+  function readSignatureDeadline() {
+    try {
+      return Number(window.sessionStorage.getItem(config.signature.sessionKey + ":dueAt")) || 0;
+    } catch (error) {
+      return signatureDueAt;
+    }
+  }
+
+  function writeSignatureDeadline(value) {
+    signatureDueAt = Number(value) || 0;
+    try {
+      if (signatureDueAt) {
+        window.sessionStorage.setItem(config.signature.sessionKey + ":dueAt", String(signatureDueAt));
+      } else {
+        window.sessionStorage.removeItem(config.signature.sessionKey + ":dueAt");
+      }
+    } catch (error) {
+      // The in-memory deadline remains authoritative when storage is blocked.
+    }
+  }
+
+  function ensureSignatureDeadline() {
+    if (signatureDueAt > 0) {
+      return signatureDueAt;
+    }
+    var storedDeadline = readSignatureDeadline();
+    var latestReasonableDeadline = Date.now() + config.signature.maxDelay + 60000;
+    if (storedDeadline > 0 && storedDeadline <= latestReasonableDeadline) {
+      signatureDueAt = storedDeadline;
+      return signatureDueAt;
+    }
+    writeSignatureDeadline(Date.now() + randomBetween(config.signature.minDelay, config.signature.maxDelay));
+    return signatureDueAt;
   }
 
   function signatureIsEligible() {
@@ -515,11 +742,15 @@
     if (!signaturePlaying) {
       return;
     }
+    var wasStarted = signatureStarted;
     signaturePlaying = false;
+    signatureStarted = false;
     if (root) {
       root.classList.remove("nyxel-signature-active");
     }
-    announceEvent("nyxel:signature", { phase: "end" });
+    if (wasStarted) {
+      announceEvent("nyxel:signature", { phase: "end" });
+    }
 
     if (settings.restorePose !== false && !panelOpen && currentState !== "SLEEP") {
       setPose("IDLE").then(scheduleOrganic);
@@ -548,28 +779,58 @@
     transientTimer = 0;
     sleepTimer = 0;
 
-    // A manual production trigger also consumes the once-per-session event.
-    // Debug mode remains repeatable so the animation can be reviewed freely.
-    if (!forced || !config.debug) {
-      signatureDecision = false;
-      writeSignatureSessionStatus("played");
-    }
-
-    setPose("WAVE");
-    root.classList.add("nyxel-signature-active");
-    announceEvent("nyxel:signature", { phase: "start", forced: forced });
-
-    signatureFoldTimer = setTimer(function () {
-      signatureFoldTimer = 0;
-      if (signaturePlaying && !panelOpen) {
-        setPose("IDLE");
+    Promise.all([
+      waitForImageElement(signatureImage, signatureAssetUrl(), config.signature.asset),
+      ensureAsset("WAVE")
+    ]).then(function () {
+      if (!signaturePlaying || destroyed || document.hidden || panelOpen) {
+        return false;
       }
-    }, Math.round(config.signature.duration * 0.78));
+      return setPose("WAVE").then(function () {
+        if (!signaturePlaying || destroyed || document.hidden || panelOpen || currentState !== "WAVE") {
+          return false;
+        }
 
-    signaturePlaybackTimer = setTimer(function () {
-      signaturePlaybackTimer = 0;
-      finishSignature();
-    }, config.signature.duration);
+        signatureStarted = true;
+        // A manual production trigger also consumes the once-per-session event.
+        // Debug mode remains repeatable so the animation can be reviewed freely.
+        if (!forced || !config.debug) {
+          signatureDecision = false;
+          writeSignatureSessionStatus("played");
+          writeSignatureDeadline(0);
+        }
+
+        root.classList.add("nyxel-signature-active");
+        announceEvent("nyxel:signature", { phase: "start", forced: forced });
+
+        signatureFoldTimer = setTimer(function () {
+          signatureFoldTimer = 0;
+          if (signaturePlaying && signatureStarted && !panelOpen) {
+            setPose("IDLE");
+          }
+        }, Math.round(config.signature.duration * 0.78));
+
+        signaturePlaybackTimer = setTimer(function () {
+          signaturePlaybackTimer = 0;
+          finishSignature();
+        }, config.signature.duration);
+        return true;
+      });
+    }).then(function (started) {
+      if (started === false && signaturePlaying && !signatureStarted) {
+        finishSignature({ restorePose: false });
+      }
+    }).catch(function (error) {
+      if (config.debug && window.console) {
+        console.warn(error.message);
+      }
+      if (signaturePlaying) {
+        finishSignature({ restorePose: false });
+      }
+      if (!forced && !destroyed && !document.hidden && signatureIsEligible()) {
+        scheduleSignature(randomBetween(2500, 5500));
+      }
+    });
     return true;
   }
 
@@ -580,17 +841,19 @@
       return;
     }
 
-    var wait = Number(delay) > 0 ? Number(delay) : randomBetween(config.signature.minDelay, config.signature.maxDelay);
+    var wait = Number(delay) > 0 ? Number(delay) : Math.max(250, ensureSignatureDeadline() - Date.now());
     signatureTimer = setTimer(function attemptSignature() {
       signatureTimer = 0;
       if (destroyed || document.hidden || !motionEnabled || !signatureIsEligible()) {
         return;
       }
       if (panelOpen || signaturePlaying || currentState === "SLEEP" || requestedState !== "IDLE") {
-        scheduleSignature(randomBetween(9000, 18000));
+        scheduleSignature(randomBetween(2500, 5500));
         return;
       }
-      playSignature();
+      if (!playSignature()) {
+        scheduleSignature(randomBetween(2500, 5500));
+      }
     }, wait);
   }
 
@@ -714,12 +977,15 @@
     }, motionEnabled ? 290 : 1);
     setPose("IDLE").then(scheduleOrganic);
     scheduleSleep();
-    if (settings.restoreFocus !== false && lastFocus && typeof lastFocus.focus === "function") {
+    var restoreFocus = settings.restoreFocus !== false && lastPointerType !== "touch";
+    if (restoreFocus && lastFocus && typeof lastFocus.focus === "function") {
       try {
         lastFocus.focus({ preventScroll: true });
       } catch (error) {
         lastFocus.focus();
       }
+    } else if (document.activeElement && root.contains(document.activeElement) && typeof document.activeElement.blur === "function") {
+      document.activeElement.blur();
     }
     announceEvent("nyxel:close", { state: "IDLE" });
   }
@@ -763,7 +1029,7 @@
   }
 
   function updateParallax(event) {
-    if (!motionEnabled || panelOpen || event.pointerType === "touch") {
+    if (!motionEnabled || !hoverCapable || panelOpen || event.pointerType === "touch") {
       return;
     }
     lastPointerType = event.pointerType || "mouse";
@@ -793,7 +1059,13 @@
     if (panelOpen) {
       return;
     }
-    setPose(lastPointerType === "touch" ? "TOUCH" : "ACTIVE");
+    clearTimer(organicTimer);
+    organicTimer = 0;
+    if (lastPointerType === "touch") {
+      setState("TOUCH", { hold: 700, returnTo: "IDLE" });
+    } else {
+      setPose("ACTIVE");
+    }
   }
 
   function onAvatarClick(event) {
@@ -808,7 +1080,7 @@
   }
 
   function onAvatarEnter(event) {
-    if (event.pointerType === "touch" || panelOpen || currentState === "SLEEP") {
+    if (!hoverCapable || event.pointerType === "touch" || panelOpen || currentState === "SLEEP") {
       return;
     }
     clearTimer(organicTimer);
@@ -817,12 +1089,16 @@
 
   function onAvatarLeave() {
     resetParallax();
+    if (!hoverCapable && lastPointerType === "touch") {
+      return;
+    }
     if (!panelOpen && currentState !== "SLEEP" && requestedState !== "SLEEP") {
       setPose("IDLE").then(scheduleOrganic);
     }
   }
 
   function onDocumentPointerDown(event) {
+    lastPointerType = event.pointerType || lastPointerType;
     registerActivity(event.pointerType === "touch" ? "touch" : "pointer");
     if (!panelOpen || !root) {
       return;
@@ -884,6 +1160,7 @@
       resetParallax();
     } else {
       root.classList.remove("nyxel-is-paused");
+      preloadAssets();
       scheduleSleep();
       scheduleSignature();
       if (!panelOpen && currentState !== "SLEEP") {
@@ -908,6 +1185,16 @@
         finishSignature({ restorePose: false });
       }
       setPose(panelOpen ? "CONTACT" : currentState === "SLEEP" ? "SLEEP" : "IDLE");
+    }
+  }
+
+  function onHoverPreferenceChange(event) {
+    hoverCapable = Boolean(event.matches);
+    if (!hoverCapable) {
+      resetParallax();
+      if (!panelOpen && (currentState === "HOVER" || requestedState === "HOVER")) {
+        setPose("IDLE").then(scheduleOrganic);
+      }
     }
   }
 
@@ -947,39 +1234,53 @@
         listeners.push(function () { mediaReduced.removeListener(onMotionPreferenceChange); });
       }
     }
+    if (mediaHover) {
+      if (typeof mediaHover.addEventListener === "function") {
+        listen(mediaHover, "change", onHoverPreferenceChange);
+      } else if (typeof mediaHover.addListener === "function") {
+        mediaHover.addListener(onHoverPreferenceChange);
+        listeners.push(function () { mediaHover.removeListener(onHoverPreferenceChange); });
+      }
+    }
+  }
+
+  function pumpPreloadQueue() {
+    if (destroyed || document.hidden) {
+      return;
+    }
+    var concurrency = embeddedWebView ? 1 : 2;
+    while (preloadActive < concurrency && preloadIndex < preloadQueue.length) {
+      var state = preloadQueue[preloadIndex++];
+      preloadActive += 1;
+      ensureAsset(state).then(preloadDone, preloadDone);
+    }
+  }
+
+  function preloadDone() {
+    preloadActive = Math.max(0, preloadActive - 1);
+    if (!destroyed && !document.hidden) {
+      setTimer(pumpPreloadQueue, embeddedWebView ? 90 : 30);
+    }
   }
 
   function preloadAssets() {
-    var priority = ["IDLE_ALT", "CONTACT", "TOUCH", "HOVER", "SLEEP", "WAKE", "WAVE"];
-    var remainder = Object.keys(ASSETS).filter(function (state) {
-      return state !== "IDLE" && priority.indexOf(state) === -1;
-    });
-    var queue = priority.concat(remainder);
-    var index = 0;
-
-    function loadNext(deadline) {
-      if (destroyed || document.hidden || index >= queue.length) {
-        return;
-      }
-      var state = queue[index++];
-      ensureAsset(state).catch(function () { return null; }).finally(function () {
-        if (index < queue.length) {
-          if (typeof window.requestIdleCallback === "function") {
-            window.requestIdleCallback(loadNext, { timeout: 1600 });
-          } else {
-            setTimer(function () { loadNext(null); }, 110);
-          }
-        }
+    if (!preloadStarted) {
+      var priority = ["WAKE", "WAVE", "CONTACT", "TOUCH", "HOVER", "IDLE_ALT", "LOOK_LEFT", "LOOK_RIGHT", "LOOK_UP", "CURIOUS", "THINK", "ACTIVE", "SURPRISED", "SLEEP"];
+      var remainder = Object.keys(ASSETS).filter(function (state) {
+        return state !== "IDLE" && priority.indexOf(state) === -1;
       });
-      if (deadline && deadline.timeRemaining && deadline.timeRemaining() > 8 && index < queue.length) {
-        // One asset per idle slice keeps bandwidth and decoding bursts gentle.
-      }
+      preloadQueue = priority.concat(remainder);
+      preloadStarted = true;
+      waitForImageElement(signatureImage, signatureAssetUrl(), config.signature.asset).catch(function () { return null; });
     }
 
+    if (document.hidden || destroyed) {
+      return;
+    }
     if (typeof window.requestIdleCallback === "function") {
-      window.requestIdleCallback(loadNext, { timeout: 1400 });
+      window.requestIdleCallback(pumpPreloadQueue, { timeout: 900 });
     } else {
-      setTimer(function () { loadNext(null); }, 900);
+      setTimer(pumpPreloadQueue, 350);
     }
   }
 
@@ -1025,6 +1326,34 @@
     return config.position;
   }
 
+  function getDiagnostics() {
+    var failures = {};
+    Object.keys(assetFailures).forEach(function (state) {
+      failures[state] = {
+        message: assetFailures[state].error ? assetFailures[state].error.message : "Unknown asset error",
+        at: assetFailures[state].at || 0
+      };
+    });
+    return {
+      version: VERSION,
+      renderer: embeddedWebView ? "safe" : "standard",
+      state: currentState,
+      requestedState: requestedState,
+      loadedAssets: Object.keys(loadedAssets).filter(function (state) { return loadedAssets[state] === true; }),
+      assetFailures: failures,
+      organicHistory: organicHistory.slice(),
+      organicRemaining: organicBag.map(function (pose) { return pose.state; }),
+      signature: {
+        eligible: signatureIsEligible(),
+        playing: signaturePlaying,
+        started: signatureStarted,
+        dueAt: signatureDueAt || readSignatureDeadline()
+      },
+      reducedMotion: reducedMotion,
+      hidden: document.hidden
+    };
+  }
+
   function destroy() {
     if (destroyed) {
       return;
@@ -1053,16 +1382,28 @@
       return;
     }
     createDom();
-    loadedAssets.IDLE = false;
-    ensureAsset("IDLE").then(function () {
-      loadedAssets.IDLE = true;
-    }).catch(function () { return null; });
     root.classList.toggle("nyxel-motion-off", !motionEnabled);
     bindEvents();
-    runGreeting();
     scheduleSleep();
     scheduleSignature();
     preloadAssets();
+
+    ensureAsset("IDLE").then(function (url) {
+      return waitForImageElement(imageLayers[0], url, ASSETS.IDLE);
+    }).then(function () {
+      if (!destroyed) {
+        root.dataset.visualReady = "true";
+        runGreeting();
+        announceEvent("nyxel:visualready", { state: "IDLE" });
+      }
+    }).catch(function (error) {
+      if (config.debug && window.console) {
+        console.warn(error.message);
+      }
+      if (!destroyed) {
+        runGreeting();
+      }
+    });
 
     window.NYXEL = {
       __mounted: true,
@@ -1079,13 +1420,15 @@
       getState: function () { return requestedState; },
       isOpen: function () { return panelOpen; },
       isSignaturePlaying: function () { return signaturePlaying; },
+      getDiagnostics: getDiagnostics,
       getElement: function () { return root; }
     };
 
     announceEvent("nyxel:ready", {
       version: VERSION,
       state: requestedState,
-      reducedMotion: reducedMotion
+      reducedMotion: reducedMotion,
+      renderer: embeddedWebView ? "safe" : "standard"
     });
   }
 

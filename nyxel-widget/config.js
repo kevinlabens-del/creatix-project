@@ -20,7 +20,8 @@ window.NYXEL_CONFIG = {
   // Behaviour
   animations: true,
   greeting: true,
-  // Organic reactions continue while the application is being used.
+  // Organic reactions continue while the application is being used. NYXEL
+  // cycles through every reaction before reusing one, without close repeats.
   reactionMinDelay: 3500,
   reactionMaxDelay: 7500,
 
@@ -29,17 +30,17 @@ window.NYXEL_CONFIG = {
   sleepAfter: 180000,
   sleepVariance: 120000,
 
-  // Rare CR3@TIX holographic signature. With chance: 1 it can play once
-  // per browser/PWA session, at a random moment between 2 and 5 minutes.
+  // Rare CR3@TIX holographic signature. With chance: 1 it plays once
+  // per browser/PWA session, at a random moment between 75 and 135 seconds.
   // Lower chance (for example 0.25) to limit it to 25% of sessions.
   signature: {
     enabled: true,
     chance: 1,
-    minDelay: 120000,
-    maxDelay: 300000,
+    minDelay: 75000,
+    maxDelay: 135000,
     duration: 4800,
     asset: "nyxel-signature.png",
-    sessionKey: "nyxel-cr3atix-map-signature-v1"
+    sessionKey: "nyxel-cr3atix-map-signature-v2"
   },
   sounds: false,
 

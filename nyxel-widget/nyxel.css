@@ -1,4 +1,4 @@
-/* NYXEL Interactive Avatar Widget v1.3.1 — fully prefixed host-safe CSS */
+/* NYXEL Interactive Avatar Widget v1.4.0 — fully prefixed host-safe CSS */
 
 .nyxel-widget,
 .nyxel-widget *,
@@ -147,13 +147,22 @@
   transform-origin: 50% 76%;
   filter: drop-shadow(0 8px 9px rgba(0, 0, 0, 0.48)) drop-shadow(-4px 0 7px rgba(39, 132, 255, 0.17)) drop-shadow(4px -2px 7px rgba(145, 61, 255, 0.17));
   transition: opacity 300ms ease, transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 300ms ease;
-  will-change: opacity, transform;
+  will-change: auto;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
 .nyxel-avatar-image.nyxel-is-visible {
   z-index: 2;
   opacity: 1;
   transform: translate3d(0, 0, 9px) scale(1);
+  will-change: opacity, transform;
+}
+
+/* Embedded Android social browsers have a smaller GPU texture budget. */
+.nyxel-widget.nyxel-webview-safe .nyxel-avatar-stage {
+  transform-style: flat;
+  will-change: auto;
 }
 
 .nyxel-widget[data-state="ACTIVE"] .nyxel-avatar-image,
@@ -161,6 +170,11 @@
 .nyxel-widget[data-state="TOUCH"] .nyxel-avatar-image,
 .nyxel-widget[data-state="SUCCESS"] .nyxel-avatar-image {
   filter: drop-shadow(0 9px 10px rgba(0, 0, 0, 0.48)) drop-shadow(-5px 0 10px rgba(25, 176, 255, 0.28)) drop-shadow(5px -2px 11px rgba(159, 56, 255, 0.28));
+}
+
+.nyxel-widget.nyxel-webview-safe .nyxel-avatar-image {
+  filter: drop-shadow(0 7px 8px rgba(0, 0, 0, 0.5)) drop-shadow(0 0 6px rgba(69, 121, 255, 0.2));
+  transition: opacity 160ms linear, transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms ease;
 }
 
 .nyxel-widget[data-state="SLEEP"] .nyxel-avatar-stage {
@@ -341,7 +355,6 @@
   left: 4%;
 }
 
-.nyxel-avatar:hover .nyxel-hint,
 .nyxel-avatar:focus-visible .nyxel-hint,
 .nyxel-widget.nyxel-first-greeting .nyxel-hint {
   opacity: 1;
@@ -404,6 +417,13 @@
   background: linear-gradient(105deg, transparent 20%, rgba(100, 233, 255, 0.055) 49%, transparent 73%);
   transform: translateX(-100%);
   pointer-events: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nyxel-avatar:hover .nyxel-hint {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
 }
 
 .nyxel-widget.nyxel-is-open .nyxel-panel {
