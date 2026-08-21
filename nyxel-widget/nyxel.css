@@ -1,0 +1,860 @@
+/* NYXEL Interactive Avatar Widget v1.3.1 — fully prefixed host-safe CSS */
+
+.nyxel-widget,
+.nyxel-widget *,
+.nyxel-widget *::before,
+.nyxel-widget *::after {
+  box-sizing: border-box;
+}
+
+.nyxel-widget {
+  --nyxel-size: clamp(128px, 16vw, 224px);
+  --nyxel-scale: 1;
+  --nyxel-blue: #21a7ff;
+  --nyxel-cyan: #56f4ff;
+  --nyxel-violet: #8d4dff;
+  --nyxel-magenta: #d64cff;
+  --nyxel-ink: #03040a;
+  --nyxel-panel-width: min(328px, calc(100vw - 24px));
+  --nyxel-rx: 0deg;
+  --nyxel-ry: 0deg;
+  --nyxel-tx: 0px;
+  --nyxel-ty: 0px;
+  position: fixed;
+  display: block;
+  width: calc(var(--nyxel-size) * var(--nyxel-scale));
+  height: calc(var(--nyxel-size) * var(--nyxel-scale));
+  margin: 0;
+  padding: 0;
+  color: #f6f8ff;
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1.4;
+  letter-spacing: normal;
+  text-align: left;
+  isolation: isolate;
+  contain: layout style;
+  pointer-events: none;
+  color-scheme: dark;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.nyxel-widget[data-position="bottom-right"] {
+  right: max(10px, env(safe-area-inset-right));
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.nyxel-widget[data-position="bottom-left"] {
+  left: max(10px, env(safe-area-inset-left));
+  bottom: max(8px, env(safe-area-inset-bottom));
+}
+
+.nyxel-widget[data-position="top-right"] {
+  right: max(10px, env(safe-area-inset-right));
+  top: max(8px, env(safe-area-inset-top));
+}
+
+.nyxel-widget[data-position="top-left"] {
+  left: max(10px, env(safe-area-inset-left));
+  top: max(8px, env(safe-area-inset-top));
+}
+
+.nyxel-avatar {
+  all: unset;
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 46% 46% 42% 42%;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  perspective: 700px;
+  transform: translateZ(0);
+}
+
+.nyxel-avatar::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  left: 17%;
+  right: 13%;
+  bottom: 7%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(72, 86, 255, 0.32) 0%, rgba(54, 207, 255, 0.14) 42%, transparent 72%);
+  filter: blur(9px);
+  opacity: 0.75;
+  transform: translate3d(calc(var(--nyxel-tx) * -0.3), 3px, 0) scaleX(0.94);
+  transition: opacity 320ms ease, transform 240ms ease;
+}
+
+.nyxel-avatar::after {
+  content: "";
+  position: absolute;
+  z-index: -2;
+  inset: 13% 10% 5%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 56% 38%, rgba(70, 226, 255, 0.16), rgba(121, 58, 255, 0.08) 42%, transparent 69%);
+  filter: blur(14px);
+  opacity: 0.65;
+  animation: nyxel-aura 5.8s ease-in-out infinite;
+}
+
+.nyxel-avatar:focus-visible {
+  outline: 2px solid var(--nyxel-cyan);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 5px rgba(80, 117, 255, 0.2), 0 0 24px rgba(57, 211, 255, 0.42);
+}
+
+.nyxel-avatar-stage {
+  position: absolute;
+  inset: -4%;
+  display: block;
+  transform-style: preserve-3d;
+  transform-origin: 52% 78%;
+  transform: translate3d(var(--nyxel-tx), var(--nyxel-ty), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry));
+  transition: transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  will-change: transform;
+  animation: nyxel-breathe 5.6s ease-in-out infinite;
+}
+
+.nyxel-avatar-image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  object-fit: contain;
+  opacity: 0;
+  user-select: none;
+  -webkit-user-drag: none;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0) scale(0.992);
+  transform-origin: 50% 76%;
+  filter: drop-shadow(0 8px 9px rgba(0, 0, 0, 0.48)) drop-shadow(-4px 0 7px rgba(39, 132, 255, 0.17)) drop-shadow(4px -2px 7px rgba(145, 61, 255, 0.17));
+  transition: opacity 300ms ease, transform 420ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 300ms ease;
+  will-change: opacity, transform;
+}
+
+.nyxel-avatar-image.nyxel-is-visible {
+  z-index: 2;
+  opacity: 1;
+  transform: translate3d(0, 0, 9px) scale(1);
+}
+
+.nyxel-widget[data-state="ACTIVE"] .nyxel-avatar-image,
+.nyxel-widget[data-state="HOVER"] .nyxel-avatar-image,
+.nyxel-widget[data-state="TOUCH"] .nyxel-avatar-image,
+.nyxel-widget[data-state="SUCCESS"] .nyxel-avatar-image {
+  filter: drop-shadow(0 9px 10px rgba(0, 0, 0, 0.48)) drop-shadow(-5px 0 10px rgba(25, 176, 255, 0.28)) drop-shadow(5px -2px 11px rgba(159, 56, 255, 0.28));
+}
+
+.nyxel-widget[data-state="SLEEP"] .nyxel-avatar-stage {
+  animation-duration: 7.8s;
+}
+
+.nyxel-widget[data-state="SLEEP"] .nyxel-avatar::after {
+  opacity: 0.24;
+}
+
+.nyxel-widget[data-state="WAKE"] .nyxel-avatar-stage,
+.nyxel-widget[data-state="TOUCH"] .nyxel-avatar-stage {
+  animation: nyxel-wake-bounce 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nyxel-widget[data-state="SUCCESS"] .nyxel-avatar::after {
+  opacity: 0.95;
+  filter: blur(17px);
+}
+
+.nyxel-signature-effect {
+  position: absolute;
+  z-index: 6;
+  display: block;
+  width: min(185%, 390px);
+  aspect-ratio: 3 / 1;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform-style: preserve-3d;
+}
+
+.nyxel-widget[data-position="bottom-right"] .nyxel-signature-effect,
+.nyxel-widget[data-position="top-right"] .nyxel-signature-effect {
+  right: 42%;
+  transform-origin: 100% 58%;
+}
+
+.nyxel-widget[data-position="bottom-left"] .nyxel-signature-effect,
+.nyxel-widget[data-position="top-left"] .nyxel-signature-effect {
+  left: 42%;
+  transform-origin: 0 58%;
+}
+
+.nyxel-widget[data-position="bottom-right"] .nyxel-signature-effect,
+.nyxel-widget[data-position="bottom-left"] .nyxel-signature-effect {
+  bottom: 54%;
+}
+
+.nyxel-widget[data-position="top-right"] .nyxel-signature-effect,
+.nyxel-widget[data-position="top-left"] .nyxel-signature-effect {
+  top: 54%;
+}
+
+.nyxel-signature-pulse,
+.nyxel-signature-beam,
+.nyxel-signature-mark {
+  position: absolute;
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.nyxel-signature-pulse {
+  top: 27%;
+  width: 23%;
+  aspect-ratio: 1;
+  border: 1px solid rgba(100, 241, 255, 0.85);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(109, 242, 255, 0.42) 0%, rgba(103, 98, 255, 0.2) 28%, rgba(191, 62, 255, 0.1) 51%, transparent 72%);
+  box-shadow: 0 0 12px rgba(55, 225, 255, 0.72), 0 0 28px rgba(132, 58, 255, 0.55), 0 0 50px rgba(222, 54, 255, 0.24);
+  filter: blur(0.2px);
+}
+
+.nyxel-widget[data-position$="right"] .nyxel-signature-pulse {
+  right: -3%;
+}
+
+.nyxel-widget[data-position$="left"] .nyxel-signature-pulse {
+  left: -3%;
+}
+
+.nyxel-signature-beam {
+  top: 57%;
+  width: 48%;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent, rgba(81, 239, 255, 0.94) 48%, rgba(219, 68, 255, 0.96));
+  box-shadow: 0 0 7px rgba(74, 231, 255, 0.9), 0 0 18px rgba(167, 63, 255, 0.72);
+}
+
+.nyxel-widget[data-position$="right"] .nyxel-signature-beam {
+  right: 1%;
+  transform-origin: 100% 50%;
+}
+
+.nyxel-widget[data-position$="left"] .nyxel-signature-beam {
+  left: 1%;
+  transform: scaleX(-1);
+  transform-origin: 0 50%;
+}
+
+.nyxel-signature-mark {
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 0 5px rgba(63, 226, 255, 0.8)) drop-shadow(0 0 12px rgba(136, 62, 255, 0.68)) drop-shadow(0 0 24px rgba(228, 50, 255, 0.28));
+}
+
+.nyxel-widget.nyxel-signature-active .nyxel-signature-effect {
+  opacity: 1;
+  visibility: visible;
+}
+
+.nyxel-widget.nyxel-signature-active .nyxel-signature-pulse {
+  animation: nyxel-signature-pulse var(--nyxel-signature-duration) ease-out both;
+}
+
+.nyxel-widget.nyxel-signature-active .nyxel-signature-beam {
+  animation: nyxel-signature-beam var(--nyxel-signature-duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nyxel-widget.nyxel-signature-active[data-position$="right"] .nyxel-signature-mark {
+  animation: nyxel-signature-mark-right var(--nyxel-signature-duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nyxel-widget.nyxel-signature-active[data-position$="left"] .nyxel-signature-mark {
+  animation: nyxel-signature-mark-left var(--nyxel-signature-duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nyxel-widget.nyxel-signature-active .nyxel-avatar-stage {
+  animation: nyxel-signature-present var(--nyxel-signature-duration) cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nyxel-widget.nyxel-signature-active .nyxel-avatar::after {
+  animation: nyxel-signature-aura var(--nyxel-signature-duration) ease-out both;
+}
+
+.nyxel-hint {
+  position: absolute;
+  right: 4%;
+  bottom: 76%;
+  display: block;
+  width: max-content;
+  max-width: min(210px, calc(100vw - 32px));
+  padding: 8px 12px;
+  border: 1px solid rgba(93, 224, 255, 0.42);
+  border-radius: 999px;
+  background: rgba(4, 7, 18, 0.78);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.34), 0 0 16px rgba(90, 84, 255, 0.13);
+  color: #eefdff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate3d(0, 7px, 0) scale(0.97);
+  transition: opacity 180ms ease, transform 220ms ease;
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.nyxel-widget[data-position$="left"] .nyxel-hint {
+  right: auto;
+  left: 4%;
+}
+
+.nyxel-avatar:hover .nyxel-hint,
+.nyxel-avatar:focus-visible .nyxel-hint,
+.nyxel-widget.nyxel-first-greeting .nyxel-hint {
+  opacity: 1;
+  transform: translate3d(0, 0, 0) scale(1);
+}
+
+.nyxel-panel {
+  position: absolute;
+  z-index: 8;
+  display: block;
+  width: var(--nyxel-panel-width);
+  min-height: 214px;
+  margin: 0;
+  padding: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(87, 218, 255, 0.48);
+  border-radius: 22px 8px 22px 22px;
+  background:
+    linear-gradient(145deg, rgba(10, 14, 30, 0.96), rgba(4, 5, 13, 0.93)),
+    rgba(3, 4, 10, 0.94);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.52),
+    0 0 0 1px rgba(136, 75, 255, 0.15) inset,
+    0 0 28px rgba(35, 146, 255, 0.16),
+    0 0 45px rgba(140, 65, 255, 0.1);
+  color: #f6f8ff;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(14px, 8px, 0) scale(0.96);
+  transform-origin: 100% 100%;
+  transition: opacity 220ms ease, transform 280ms cubic-bezier(0.16, 1, 0.3, 1), visibility 220ms step-end;
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+}
+
+.nyxel-panel[hidden] {
+  display: none;
+}
+
+.nyxel-panel::before {
+  content: "";
+  position: absolute;
+  top: -45%;
+  left: -16%;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(58, 219, 255, 0.18), rgba(130, 65, 255, 0.08) 38%, transparent 70%);
+  filter: blur(5px);
+  pointer-events: none;
+  animation: nyxel-panel-light 6.4s ease-in-out infinite alternate;
+}
+
+.nyxel-panel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg, transparent 20%, rgba(100, 233, 255, 0.055) 49%, transparent 73%);
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+
+.nyxel-widget.nyxel-is-open .nyxel-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition: opacity 220ms ease, transform 280ms cubic-bezier(0.16, 1, 0.3, 1), visibility 0s step-start;
+}
+
+.nyxel-widget.nyxel-is-open .nyxel-panel::after {
+  animation: nyxel-panel-scan 900ms 180ms ease-out both;
+}
+
+.nyxel-widget[data-position="bottom-right"] .nyxel-panel {
+  right: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.7);
+  bottom: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.32);
+}
+
+.nyxel-widget[data-position="bottom-left"] .nyxel-panel {
+  left: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.7);
+  bottom: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.32);
+  border-radius: 8px 22px 22px 22px;
+  transform-origin: 0 100%;
+  transform: translate3d(-14px, 8px, 0) scale(0.96);
+}
+
+.nyxel-widget[data-position="top-right"] .nyxel-panel {
+  right: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.7);
+  top: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.32);
+  border-radius: 22px 22px 8px 22px;
+  transform-origin: 100% 0;
+}
+
+.nyxel-widget[data-position="top-left"] .nyxel-panel {
+  left: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.7);
+  top: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.32);
+  border-radius: 22px 22px 22px 8px;
+  transform-origin: 0 0;
+  transform: translate3d(-14px, 8px, 0) scale(0.96);
+}
+
+.nyxel-panel-header {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0 0 13px;
+}
+
+.nyxel-panel-copy {
+  min-width: 0;
+}
+
+.nyxel-panel-eyebrow {
+  display: block;
+  margin: 0 0 5px;
+  color: #6ff2ff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.17em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.nyxel-panel-title {
+  display: block;
+  margin: 0;
+  padding: 0;
+  color: #ffffff;
+  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: 0.09em;
+  line-height: 1.05;
+  text-shadow: 0 0 18px rgba(94, 187, 255, 0.32);
+}
+
+.nyxel-panel-title::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--nyxel-cyan);
+  box-shadow: 0 0 10px var(--nyxel-cyan), 0 0 20px rgba(137, 75, 255, 0.8);
+  vertical-align: 0.14em;
+  animation: nyxel-status-pulse 2.6s ease-in-out infinite;
+}
+
+.nyxel-panel-close {
+  all: unset;
+  position: relative;
+  display: grid;
+  flex: 0 0 34px;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  margin: -5px -5px 0 0;
+  border: 1px solid rgba(113, 200, 255, 0.26);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #eaf8ff;
+  font-family: ui-sans-serif, sans-serif;
+  font-size: 21px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease, transform 160ms ease;
+}
+
+.nyxel-panel-close:hover {
+  border-color: rgba(99, 232, 255, 0.72);
+  background: rgba(80, 177, 255, 0.11);
+  color: #ffffff;
+  transform: rotate(3deg);
+}
+
+.nyxel-panel-close:focus-visible,
+.nyxel-contact-button:focus-visible,
+.nyxel-link:focus-visible {
+  outline: 2px solid var(--nyxel-cyan);
+  outline-offset: 3px;
+}
+
+.nyxel-panel-text {
+  position: relative;
+  z-index: 2;
+  display: block;
+  margin: 0 0 17px;
+  color: rgba(239, 245, 255, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.48;
+}
+
+.nyxel-contact-button {
+  all: unset;
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 48px;
+  padding: 11px 14px;
+  border: 1px solid rgba(91, 220, 255, 0.62);
+  border-radius: 14px;
+  background: linear-gradient(115deg, rgba(28, 130, 234, 0.2), rgba(126, 55, 227, 0.2));
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24), 0 0 18px rgba(65, 161, 255, 0.1) inset;
+  color: #f8fdff;
+  font-size: 13px;
+  font-weight: 760;
+  letter-spacing: 0.015em;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 180ms ease, background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+}
+
+.nyxel-contact-button:hover {
+  border-color: rgba(137, 106, 255, 0.92);
+  background: linear-gradient(115deg, rgba(32, 160, 255, 0.28), rgba(144, 64, 255, 0.3));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.3), 0 0 22px rgba(92, 97, 255, 0.18) inset;
+  transform: translateY(-1px);
+}
+
+.nyxel-contact-icon,
+.nyxel-link-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #6ff4ff;
+}
+
+.nyxel-contact-icon svg,
+.nyxel-link-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.nyxel-contact-arrow {
+  color: #ba91ff;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.nyxel-links {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+}
+
+.nyxel-links:empty {
+  display: none;
+}
+
+.nyxel-link {
+  all: unset;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(121, 136, 255, 0.22);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.025);
+  color: rgba(239, 245, 255, 0.82);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+}
+
+.nyxel-link:hover {
+  border-color: rgba(84, 224, 255, 0.58);
+  background: rgba(85, 113, 255, 0.09);
+  color: #ffffff;
+}
+
+.nyxel-link-icon {
+  width: 16px;
+  height: 16px;
+}
+
+.nyxel-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.nyxel-widget.nyxel-is-paused .nyxel-avatar-stage,
+.nyxel-widget.nyxel-is-paused .nyxel-avatar::after,
+.nyxel-widget.nyxel-is-paused .nyxel-panel::before,
+.nyxel-widget.nyxel-is-paused .nyxel-panel-title::after,
+.nyxel-widget.nyxel-is-paused .nyxel-signature-pulse,
+.nyxel-widget.nyxel-is-paused .nyxel-signature-beam,
+.nyxel-widget.nyxel-is-paused .nyxel-signature-mark {
+  animation-play-state: paused !important;
+}
+
+.nyxel-widget.nyxel-motion-off .nyxel-avatar-stage,
+.nyxel-widget.nyxel-motion-off .nyxel-avatar::after,
+.nyxel-widget.nyxel-motion-off .nyxel-panel::before,
+.nyxel-widget.nyxel-motion-off .nyxel-panel::after,
+.nyxel-widget.nyxel-motion-off .nyxel-panel-title::after,
+.nyxel-widget.nyxel-motion-off .nyxel-signature-pulse,
+.nyxel-widget.nyxel-motion-off .nyxel-signature-beam,
+.nyxel-widget.nyxel-motion-off .nyxel-signature-mark {
+  animation: none !important;
+}
+
+.nyxel-widget.nyxel-motion-off .nyxel-signature-effect {
+  display: none !important;
+}
+
+.nyxel-widget.nyxel-motion-off .nyxel-avatar-stage,
+.nyxel-widget.nyxel-motion-off .nyxel-avatar-image,
+.nyxel-widget.nyxel-motion-off .nyxel-panel,
+.nyxel-widget.nyxel-motion-off .nyxel-hint {
+  transition-duration: 1ms !important;
+}
+
+@keyframes nyxel-breathe {
+  0%, 100% { transform: translate3d(var(--nyxel-tx), var(--nyxel-ty), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale3d(1, 1, 1); }
+  47% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) - 1.6px), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale3d(1.002, 1.006, 1); }
+}
+
+@keyframes nyxel-aura {
+  0%, 100% { opacity: 0.5; transform: scale(0.94); }
+  50% { opacity: 0.72; transform: scale(1.02); }
+}
+
+@keyframes nyxel-wake-bounce {
+  0% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) + 3px), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale(0.985); }
+  52% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) - 4px), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale(1.012); }
+  100% { transform: translate3d(var(--nyxel-tx), var(--nyxel-ty), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale(1); }
+}
+
+@keyframes nyxel-status-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(0.82); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+@keyframes nyxel-panel-light {
+  from { transform: translate3d(-8px, -5px, 0) scale(0.92); opacity: 0.65; }
+  to { transform: translate3d(18px, 12px, 0) scale(1.08); opacity: 0.95; }
+}
+
+@keyframes nyxel-panel-scan {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(120%); }
+}
+
+@keyframes nyxel-signature-pulse {
+  0%, 12% { opacity: 0; transform: scale(0.18); }
+  22% { opacity: 1; transform: scale(0.52); }
+  38% { opacity: 0.82; transform: scale(1.08); }
+  58% { opacity: 0.32; transform: scale(1.48); }
+  82%, 100% { opacity: 0; transform: scale(1.86); }
+}
+
+@keyframes nyxel-signature-beam {
+  0%, 13% { opacity: 0; transform: scaleX(0); }
+  22% { opacity: 1; transform: scaleX(1); }
+  38% { opacity: 0.72; transform: scaleX(0.88); }
+  72% { opacity: 0.44; transform: scaleX(0.96); }
+  90%, 100% { opacity: 0; transform: scaleX(0.12); }
+}
+
+@keyframes nyxel-signature-mark-right {
+  0%, 14% { opacity: 0; transform: translate3d(14%, 4px, 0) rotateY(-58deg) scale(0.34); }
+  26% { opacity: 0.76; transform: translate3d(5%, 1px, 0) rotateY(-18deg) scale(0.78); }
+  39% { opacity: 1; transform: translate3d(0, 0, 16px) rotateY(0) scale(1); }
+  72% { opacity: 1; transform: translate3d(0, -1px, 16px) rotateY(0) scale(1); }
+  87% { opacity: 0.86; transform: translate3d(-1.5%, -2px, 12px) rotateY(2deg) scale(1.025); }
+  100% { opacity: 0; transform: translate3d(-4%, -4px, 0) rotateY(8deg) scale(1.08); }
+}
+
+@keyframes nyxel-signature-mark-left {
+  0%, 14% { opacity: 0; transform: translate3d(-14%, 4px, 0) rotateY(58deg) scale(0.34); }
+  26% { opacity: 0.76; transform: translate3d(-5%, 1px, 0) rotateY(18deg) scale(0.78); }
+  39% { opacity: 1; transform: translate3d(0, 0, 16px) rotateY(0) scale(1); }
+  72% { opacity: 1; transform: translate3d(0, -1px, 16px) rotateY(0) scale(1); }
+  87% { opacity: 0.86; transform: translate3d(1.5%, -2px, 12px) rotateY(-2deg) scale(1.025); }
+  100% { opacity: 0; transform: translate3d(4%, -4px, 0) rotateY(-8deg) scale(1.08); }
+}
+
+@keyframes nyxel-signature-present {
+  0%, 100% { transform: translate3d(var(--nyxel-tx), var(--nyxel-ty), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale(1); }
+  16% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) - 2px), 0) rotateX(var(--nyxel-rx)) rotateY(calc(var(--nyxel-ry) - 2deg)) scale(1.01); }
+  34%, 72% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) - 3px), 0) rotateX(var(--nyxel-rx)) rotateY(calc(var(--nyxel-ry) - 3deg)) scale(1.015); }
+  88% { transform: translate3d(var(--nyxel-tx), calc(var(--nyxel-ty) - 1px), 0) rotateX(var(--nyxel-rx)) rotateY(var(--nyxel-ry)) scale(1.005); }
+}
+
+@keyframes nyxel-signature-aura {
+  0%, 100% { opacity: 0.58; transform: scale(0.96); }
+  20% { opacity: 1; transform: scale(1.08); }
+  44% { opacity: 0.82; transform: scale(1.02); }
+  72% { opacity: 0.68; transform: scale(1); }
+}
+
+@media (max-width: 680px) {
+  .nyxel-widget {
+    --nyxel-size: clamp(126px, 36vw, 172px);
+  }
+
+  .nyxel-widget[data-position="bottom-right"] .nyxel-panel,
+  .nyxel-widget[data-position="bottom-left"] .nyxel-panel {
+    right: 0;
+    left: auto;
+    bottom: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.78);
+    border-radius: 20px 20px 8px 20px;
+    transform-origin: 100% 100%;
+  }
+
+  .nyxel-widget[data-position="top-right"] .nyxel-panel,
+  .nyxel-widget[data-position="top-left"] .nyxel-panel {
+    right: 0;
+    left: auto;
+    top: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.78);
+    border-radius: 20px 8px 20px 20px;
+    transform-origin: 100% 0;
+  }
+
+  .nyxel-panel {
+    padding: 18px;
+  }
+
+  .nyxel-signature-effect {
+    width: min(175%, 280px);
+  }
+
+  .nyxel-widget[data-position="bottom-right"] .nyxel-signature-effect,
+  .nyxel-widget[data-position="top-right"] .nyxel-signature-effect {
+    right: 35%;
+  }
+
+  .nyxel-widget[data-position="bottom-left"] .nyxel-signature-effect,
+  .nyxel-widget[data-position="top-left"] .nyxel-signature-effect {
+    left: 35%;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .nyxel-widget {
+    --nyxel-size: clamp(106px, 29vh, 150px);
+  }
+
+  .nyxel-widget[data-position="bottom-right"] .nyxel-panel,
+  .nyxel-widget[data-position="bottom-left"] .nyxel-panel,
+  .nyxel-widget[data-position="top-right"] .nyxel-panel,
+  .nyxel-widget[data-position="top-left"] .nyxel-panel {
+    right: calc(var(--nyxel-size) * var(--nyxel-scale) * 0.78);
+    left: auto;
+    top: auto;
+    bottom: 0;
+    max-height: calc(100vh - 18px);
+    overflow-y: auto;
+    border-radius: 18px 8px 18px 18px;
+    transform-origin: 100% 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nyxel-widget .nyxel-avatar-stage,
+  .nyxel-widget .nyxel-avatar::after,
+  .nyxel-widget .nyxel-panel::before,
+  .nyxel-widget .nyxel-panel::after,
+  .nyxel-widget .nyxel-panel-title::after,
+  .nyxel-widget .nyxel-signature-pulse,
+  .nyxel-widget .nyxel-signature-beam,
+  .nyxel-widget .nyxel-signature-mark {
+    animation: none !important;
+  }
+
+  .nyxel-widget .nyxel-signature-effect {
+    display: none !important;
+  }
+
+  .nyxel-widget .nyxel-avatar-stage,
+  .nyxel-widget .nyxel-avatar-image,
+  .nyxel-widget .nyxel-panel,
+  .nyxel-widget .nyxel-hint,
+  .nyxel-widget .nyxel-panel-close,
+  .nyxel-widget .nyxel-contact-button,
+  .nyxel-widget .nyxel-link {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}

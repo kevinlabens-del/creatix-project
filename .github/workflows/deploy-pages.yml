@@ -51,6 +51,8 @@ jobs:
           cp business-card.jpg _site/business-card-v2.jpg
           cp cosmic-background.css _site/cosmic-background.css
           cp energy-transfer.js _site/energy-transfer.js
+          cp -R nyxel-widget _site/nyxel-widget
+          cp nyxel-map.css _site/nyxel-map.css
 
           python3 - <<'PY'
           from pathlib import Path
@@ -72,7 +74,7 @@ jobs:
           html = html.replace('Toucher pour agrandir', '')
           html = re.sub(r'Glisser pour naviguer[^<]*', '', html)
           # Hide helper/toast UI containers that can re-inject the expand hint at runtime.
-          helper_css = '<style id="cr3atix-helper-cleanup">.hint,.helper,.instructions,.instruction,.toast,.zoom-hint,.expand-hint,[class*="hint"],[class*="helper"],[class*="instruction"]{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}</style>'
+          helper_css = '<style id="cr3atix-helper-cleanup">body>.hint,body>.helper,body>.instructions,body>.instruction,body>.toast,body>.zoom-hint,body>.expand-hint{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}</style>'
           if 'id="cr3atix-helper-cleanup"' not in html:
               html = html.replace('</head>', helper_css + '</head>', 1)
           target = '<script src="app.js"></script>'
@@ -84,6 +86,9 @@ jobs:
           cosmic_css = '<link rel="stylesheet" href="cosmic-background.css">'
           energy = '<script src="energy-transfer.js"></script>'
           cosmic_canvas = '<canvas id="cosmicCanvas" class="cosmic-canvas" aria-hidden="true"></canvas>'
+          nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.3.1">'
+          nyxel_map_css = '<link rel="stylesheet" href="nyxel-map.css?v=1.0.0">'
+          nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.0.0"></script><script src="nyxel-widget/nyxel.js?v=1.3.1"></script>'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -93,6 +98,8 @@ jobs:
           html = re.sub(r'<script src="extra-zoom\.js(?:\?v=[^"]+)?"></script>', '', html)
           if cosmic_css not in html:
               html = html.replace('</head>', cosmic_css + '</head>', 1)
+          if nyxel_css not in html:
+              html = html.replace('</head>', nyxel_css + nyxel_map_css + '</head>', 1)
           if 'id="cosmicCanvas"' not in html:
               html = html.replace('<main id="viewport" class="viewport">', '<main id="viewport" class="viewport">' + cosmic_canvas, 1)
           if energy not in html:
@@ -102,12 +109,13 @@ jobs:
           if card not in html: html = html.replace(remote, remote + card, 1)
           if fullscreen not in html: html = html.replace(card, card + fullscreen, 1)
           if neon not in html: html = html.replace(fullscreen, fullscreen + neon, 1)
+          if nyxel_scripts not in html: html = html.replace('</body>', nyxel_scripts + '</body>', 1)
           index.write_text(html, encoding='utf-8')
 
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.28-helper-clean", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.29-nyxel", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -119,8 +127,41 @@ jobs:
               if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
               if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
               if "'./energy-transfer.js'" not in text: text = text.replace("'./app.js'", "'./energy-transfer.js','./app.js'")
+              nyxel_core = [
+                  './nyxel-map.css',
+                  './nyxel-widget/nyxel.css',
+                  './nyxel-widget/config.js',
+                  './nyxel-widget/nyxel.js',
+                  './nyxel-widget/assets/nyxel-idle.png',
+                  './nyxel-widget/assets/nyxel-idle-alt.png',
+                  './nyxel-widget/assets/nyxel-look-left.png',
+                  './nyxel-widget/assets/nyxel-look-right.png',
+                  './nyxel-widget/assets/nyxel-look-up.png',
+                  './nyxel-widget/assets/nyxel-curious.png',
+                  './nyxel-widget/assets/nyxel-active.png',
+                  './nyxel-widget/assets/nyxel-hover.png',
+                  './nyxel-widget/assets/nyxel-touch.png',
+                  './nyxel-widget/assets/nyxel-sleep.png',
+                  './nyxel-widget/assets/nyxel-wake.png',
+                  './nyxel-widget/assets/nyxel-contact.png',
+                  './nyxel-widget/assets/nyxel-wave.png',
+                  './nyxel-widget/assets/nyxel-success.png',
+                  './nyxel-widget/assets/nyxel-surprised.png',
+                  './nyxel-widget/assets/nyxel-think.png',
+                  './nyxel-widget/assets/nyxel-signature.png',
+              ]
+              if "'./nyxel-widget/nyxel.js'" not in text:
+                  core_end = "];self.addEventListener('install'"
+                  if core_end not in text:
+                      raise SystemExit('Unable to locate the service-worker CORE list')
+                  entries = ',' + ','.join(repr(path) for path in nyxel_core)
+                  text = text.replace(core_end, entries + core_end, 1)
               sw.write_text(text, encoding='utf-8')
           PY
+          test -f _site/nyxel-widget/assets/nyxel-idle.png
+          test -f _site/nyxel-widget/assets/nyxel-look-left.png
+          grep -q 'nyxel-widget/nyxel.js' _site/index.html
+          grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           touch _site/.nojekyll
 
       - name: Setup Pages
