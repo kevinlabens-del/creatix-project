@@ -115,7 +115,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.30-nyxel-1.4.0", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.31-nyxel-1.4.0", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -130,8 +130,11 @@ jobs:
               nyxel_core = [
                   './nyxel-map.css',
                   './nyxel-widget/nyxel.css',
+                  './nyxel-widget/nyxel.css?v=1.4.0',
                   './nyxel-widget/config.js',
+                  './nyxel-widget/config.js?v=1.4.0',
                   './nyxel-widget/nyxel.js',
+                  './nyxel-widget/nyxel.js?v=1.4.0',
                   './nyxel-widget/assets/nyxel-idle.png',
                   './nyxel-widget/assets/nyxel-idle-alt.png',
                   './nyxel-widget/assets/nyxel-look-left.png',
@@ -161,6 +164,7 @@ jobs:
           test -f _site/nyxel-widget/assets/nyxel-idle.png
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
+          grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           touch _site/.nojekyll
 
