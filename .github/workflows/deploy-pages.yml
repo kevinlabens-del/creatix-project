@@ -89,6 +89,7 @@ jobs:
           nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.4.0">'
           nyxel_map_css = '<link rel="stylesheet" href="nyxel-map.css?v=1.0.0">'
           nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.4.0"></script><script src="nyxel-widget/nyxel.js?v=1.4.0"></script>'
+          cloudflare_analytics = '<!-- Cloudflare Web Analytics --><script type=\'module\' src=\'https://static.cloudflareinsights.com/beacon.min.js\' data-cf-beacon=\'{"token": "28610ff3afd94bafa29a51254334921c"}\'></script><!-- End Cloudflare Web Analytics -->'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
@@ -110,6 +111,8 @@ jobs:
           if fullscreen not in html: html = html.replace(card, card + fullscreen, 1)
           if neon not in html: html = html.replace(fullscreen, fullscreen + neon, 1)
           if nyxel_scripts not in html: html = html.replace('</body>', nyxel_scripts + '</body>', 1)
+          if 'static.cloudflareinsights.com/beacon.min.js' not in html:
+              html = html.replace('</body>', cloudflare_analytics + '</body>', 1)
           index.write_text(html, encoding='utf-8')
 
           sw = Path('_site/sw.js')
@@ -166,6 +169,7 @@ jobs:
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
           grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
+          grep -q 'static.cloudflareinsights.com/beacon.min.js' _site/index.html
           touch _site/.nojekyll
 
       - name: Setup Pages
