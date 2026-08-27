@@ -96,6 +96,21 @@ jobs:
           printf '%s' "${SESSION_SECRET}" | npx wrangler secret put SESSION_SECRET --config wrangler.jsonc
           unset RATE_LIMIT_SALT SESSION_SECRET
 
+      - name: Configure optional administrator password
+        env:
+          CR3ATIX_ADMIN_PASSWORD: ${{ secrets.CR3ATIX_ADMIN_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CR3ATIX_ADMIN_PASSWORD:-}" ]; then
+            echo "Administrator password is not configured; public API remains available and admin login stays locked."
+            exit 0
+          fi
+          ADMIN_PASSWORD_HASH="$(node scripts/hash-admin-password.mjs)"
+          [[ "${ADMIN_PASSWORD_HASH}" == pbkdf2_sha256\$* ]] || { echo "::error::Invalid administrator password hash"; exit 1; }
+          printf '%s' "${ADMIN_PASSWORD_HASH}" | npx wrangler secret put ADMIN_PASSWORD_HASH --config wrangler.jsonc
+          unset ADMIN_PASSWORD_HASH CR3ATIX_ADMIN_PASSWORD
+
       - name: Smoke-test locked API
         env:
           WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
