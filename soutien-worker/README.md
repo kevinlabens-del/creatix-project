@@ -62,8 +62,13 @@ mais `PAYMENT_MODE=disabled` continue de refuser toute création de paiement.
 
 ## Activation Stripe TEST
 
-Créer un compte Stripe adapté au bénéficiaire réel et vérifier ses conditions
-d’utilisation. Utiliser exclusivement les identifiants de test :
+Ne créer un compte Stripe qu’après avoir vérifié l’éligibilité du bénéficiaire
+réel. Les conditions Stripe visent une entreprise (y compris entrepreneur
+individuel), une entité publique ou un organisme à but non lucratif, sous
+réserve d’approbation ; certaines collectes de fonds sont restreintes. Un
+particulier français sans statut ne doit donc pas être supposé éligible.
+
+Après acceptation explicite du compte, utiliser exclusivement les identifiants de test :
 
 ```bash
 npx wrangler secret put STRIPE_SECRET_KEY
