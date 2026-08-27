@@ -17,7 +17,7 @@
     {
       "binding": "DB",
       "database_name": "cr3atix-soutien-db",
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "2bd867af-5009-4b73-b19d-3cf2cbf66775",
       "migrations_dir": "migrations"
     }
   ],
