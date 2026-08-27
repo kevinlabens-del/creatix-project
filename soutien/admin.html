@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#070816">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://*.workers.dev; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+  <title>Administration — CR3@TIX SOUTIEN</title>
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <main id="adminRoot" class="admin-root">
+    <section id="loginView" class="admin-login">
+      <a class="brand" href="./"><span class="brand-mark" aria-hidden="true"><span></span></span><span><strong>CR3@TIX</strong><small>SOUTIEN // ADMIN</small></span></a>
+      <form id="loginForm" class="login-card">
+        <div class="admin-badge">ACCÈS PRIVÉ</div>
+        <h1>Piloter le soutien</h1>
+        <p>Session courte, mot de passe vérifié côté serveur et données transactionnelles privées.</p>
+        <label><span>Mot de passe administrateur</span><input id="adminPassword" type="password" minlength="14" autocomplete="current-password" required></label>
+        <div id="loginError" class="form-error" role="alert" hidden></div>
+        <button class="button primary" type="submit">Ouvrir le cockpit</button>
+        <a href="./">← Retour à CR3@TIX SOUTIEN</a>
+      </form>
+    </section>
+
+    <section id="dashboardView" class="admin-dashboard" hidden>
+      <header class="admin-topbar">
+        <a class="brand compact" href="./"><span class="brand-mark" aria-hidden="true"><span></span></span><span><strong>CR3@TIX</strong><small>SOUTIEN // ADMIN</small></span></a>
+        <div><span id="adminMode" class="mode-pill">MODE TEST</span><button id="refreshAdmin" class="icon-button" type="button" aria-label="Actualiser">↻</button><button id="logoutButton" class="button secondary" type="button">Déconnexion</button></div>
+      </header>
+      <div class="admin-content">
+        <div class="admin-heading"><div><small>COCKPIT CENTRAL</small><h1>Vue d’ensemble</h1></div><div class="period-filter"><button data-period="7">7 jours</button><button data-period="30" class="active">30 jours</button><button data-period="90">90 jours</button><button data-period="all">Tout</button></div></div>
+        <div id="adminError" class="form-error" role="alert" hidden></div>
+        <section class="admin-metrics" aria-label="Indicateurs">
+          <article><span>Total net confirmé</span><strong id="metricTotal">—</strong><small>Après remboursements</small></article>
+          <article><span>Contributions confirmées</span><strong id="metricCount">—</strong><small id="metricAverage">Panier moyen —</small></article>
+          <article><span>Conversions</span><strong id="metricConversion">—</strong><small>Webhooks authentifiés</small></article>
+          <article><span>Échecs / annulations</span><strong id="metricFailures">—</strong><small>À surveiller</small></article>
+        </section>
+        <div class="admin-grid">
+          <section class="admin-panel wide"><header><div><h2>Répartition par projet</h2><p>Montants confirmés et progression réelle</p></div></header><div id="projectBreakdown" class="breakdown"></div></section>
+          <section class="admin-panel"><header><div><h2>Parcours</h2><p>Événements agrégés, sans profilage</p></div></header><div id="funnelView" class="funnel"></div></section>
+        </div>
+        <section class="admin-panel transactions-panel">
+          <header><div><h2>Transactions</h2><p>La base ne contient aucun numéro de carte.</p></div><div class="export-actions"><button id="exportCsv" type="button">CSV</button><button id="exportJson" type="button">JSON</button></div></header>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Projet</th><th>Montant</th><th>Statut</th><th>Affichage</th><th>Référence</th></tr></thead><tbody id="transactionRows"></tbody></table></div>
+          <button id="loadMore" class="button secondary" type="button" hidden>Afficher la suite</button>
+        </section>
+      </div>
+    </section>
+  </main>
+  <script src="config.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

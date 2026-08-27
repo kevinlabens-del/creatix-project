@@ -1,0 +1,27 @@
+{
+  "name": "cr3atix-soutien-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local",
+    "types:check": "wrangler types --check",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:frontend": "node --test ../soutien/tests/*.test.mjs",
+    "test:schema": "node scripts/verify-schema.mjs",
+    "check": "npm run typecheck && npm test && npm run test:frontend && npm run test:schema && wrangler deploy --dry-run --outdir=dist-worker",
+    "db:local": "wrangler d1 migrations apply cr3atix-soutien-db --local",
+    "deploy": "wrangler deploy --minify",
+    "hash-admin": "node scripts/hash-admin-password.mjs"
+  },
+  "dependencies": {
+    "stripe": "22.6.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260827.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.11",
+    "wrangler": "4.127.0"
+  }
+}

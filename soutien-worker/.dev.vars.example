@@ -1,0 +1,9 @@
+# Copie ce fichier en .dev.vars, puis remplace uniquement les valeurs locales.
+STRIPE_SECRET_KEY=sk_test_REPLACE_ME
+STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+ADMIN_PASSWORD_HASH=pbkdf2_sha256$310000$REPLACE_SALT$REPLACE_HASH
+SESSION_SECRET=replace-with-at-least-32-random-characters
+RATE_LIMIT_SALT=replace-with-another-random-secret
+TURNSTILE_SECRET_KEY=
+ALLOW_LIVE_PAYMENTS=no
+LEGAL_APPROVAL_ID=

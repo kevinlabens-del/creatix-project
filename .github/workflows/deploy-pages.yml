@@ -4,6 +4,8 @@ on:
   push:
     branches: ["main"]
   workflow_dispatch:
+  schedule:
+    - cron: "23 3 * * *"
 
 permissions:
   contents: write
@@ -15,7 +17,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify-soutien:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: soutien-worker
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: soutien-worker/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Frontend registry tests
+        run: npm run test:frontend
+      - name: D1 schema tests
+        run: npm run test:schema
+      - name: Worker bundle dry-run
+        run: npx wrangler deploy --dry-run --outdir=dist-worker
+
   deploy:
+    needs: verify-soutien
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -53,6 +83,7 @@ jobs:
           cp energy-transfer.js _site/energy-transfer.js
           cp -R nyxel-widget _site/nyxel-widget
           cp nyxel-map.css _site/nyxel-map.css
+          cp -R soutien _site/soutien
 
           python3 - <<'PY'
           from pathlib import Path
@@ -79,7 +110,7 @@ jobs:
               html = html.replace('</head>', helper_css + '</head>', 1)
           target = '<script src="app.js"></script>'
           layout = '<script src="auto-layout.js"></script>'
-          remote = '<script src="remote-admin.js?v=1.16.10"></script>'
+          remote = '<script src="remote-admin.js?v=1.16.11"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
@@ -118,7 +149,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.31-nyxel-1.4.0", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.32-soutien-1.0.0", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -130,6 +161,7 @@ jobs:
               if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
               if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
               if "'./energy-transfer.js'" not in text: text = text.replace("'./app.js'", "'./energy-transfer.js','./app.js'")
+              if "'./projects.json'" not in text: text = text.replace("'./app.js'", "'./projects.json','./app.js'")
               nyxel_core = [
                   './nyxel-map.css',
                   './nyxel-widget/nyxel.css',
@@ -164,12 +196,22 @@ jobs:
                   text = text.replace(core_end, entries + core_end, 1)
               sw.write_text(text, encoding='utf-8')
           PY
+          node --check soutien/app.js
+          node --check soutien/admin.js
+          node --check soutien/projects.js
+          node --check soutien/sw.js
+          node build-project-manifest.mjs _site/app.js _site/projects.json
           test -f _site/nyxel-widget/assets/nyxel-idle.png
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
           grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           grep -q 'static.cloudflareinsights.com/beacon.min.js' _site/index.html
+          test -f _site/soutien/index.html
+          test -f _site/soutien/assets/icon-192.png
+          test -f _site/soutien/assets/icon-512.png
+          grep -q 'CR3@TIX SOUTIEN' _site/remote-admin.js
+          python3 -m json.tool _site/projects.json >/dev/null
           touch _site/.nojekyll
 
       - name: Setup Pages

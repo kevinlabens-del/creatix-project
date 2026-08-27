@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "cr3atix-soutien-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "FRONTEND_ORIGIN": "https://kevinlabens-del.github.io",
+    "FRONTEND_BASE_URL": "https://kevinlabens-del.github.io/creatix-project/soutien/",
+    "MAP_API_URL": "https://gwqojqwcbwoulxrctaqz.supabase.co/functions/v1/cr3atix-admin",
+    "PAYMENT_MODE": "disabled",
+    "MIN_CONTRIBUTION_CENTS": "200",
+    "MAX_CONTRIBUTION_CENTS": "20000"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cr3atix-soutien-db",
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": {"crons": ["17 */6 * * *"]},
+  "observability": {"enabled": true, "head_sampling_rate": 0.1}
+}

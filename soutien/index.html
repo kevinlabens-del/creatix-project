@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#070816">
+  <meta name="description" content="Soutenez volontairement les projets numériques CR3@TIX, sans contrepartie commerciale.">
+  <meta name="robots" content="index,follow">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https://gwqojqwcbwoulxrctaqz.supabase.co https://*.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+  <title>CR3@TIX SOUTIEN — Soutenir les projets</title>
+  <link rel="canonical" href="https://kevinlabens-del.github.io/creatix-project/soutien/">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#projects">Aller aux projets</a>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <a class="brand" href="./" aria-label="CR3@TIX SOUTIEN — Accueil">
+      <span class="brand-mark" aria-hidden="true"><span></span></span>
+      <span><strong>CR3@TIX</strong><small>SOUTIEN</small></span>
+    </a>
+    <nav aria-label="Navigation principale">
+      <a href="#projects">Projets</a>
+      <a href="#transparency">Transparence</a>
+      <a href="legal.html#confidentialite">Confidentialité</a>
+      <a class="admin-link" href="admin.html">Admin</a>
+    </nav>
+    <button id="installButton" class="icon-button" type="button" hidden aria-label="Installer l’application">
+      <svg aria-hidden="true" viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"/></svg>
+    </button>
+  </header>
+
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <div class="eyebrow"><span></span> DE L’IMAGINATION À LA CONCEPTION</div>
+        <h1 id="hero-title">Fais avancer les projets <em>CR3@TIX</em></h1>
+        <p>Un espace direct et transparent pour soutenir volontairement le développement, l’amélioration et la maintenance de mes projets numériques.</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#projects">Choisir un projet</a>
+          <button class="button secondary" type="button" data-support-project="global">Soutenir CR3@TIX</button>
+        </div>
+        <p class="no-reward"><svg aria-hidden="true" viewBox="0 0 24 24"><path d="m7 12 3 3 7-7"/></svg> Contribution volontaire, sans contrepartie et non déductible fiscalement.</p>
+      </div>
+      <aside class="hero-console" aria-label="État de la collecte">
+        <div class="console-head"><span>IMPACT EN DIRECT</span><i id="servicePulse"></i></div>
+        <div class="total">
+          <span>Total confirmé</span>
+          <strong id="totalAmount">—</strong>
+          <small id="totalContributions">Connexion au registre…</small>
+        </div>
+        <div class="mini-grid">
+          <div><span>Projets</span><b id="projectCount">—</b></div>
+          <div><span>Mode</span><b id="paymentMode">TEST</b></div>
+        </div>
+        <div id="modeNotice" class="mode-notice" role="status">Aucun paiement réel n’est activé.</div>
+      </aside>
+    </section>
+
+    <section class="principles" aria-label="Principes de CR3@TIX SOUTIEN">
+      <article><span>01</span><div><b>Choix libre</b><small>Tu sélectionnes le projet qui te parle.</small></div></article>
+      <article><span>02</span><div><b>Paiement protégé</b><small>Les données bancaires restent chez le prestataire.</small></div></article>
+      <article><span>03</span><div><b>Suivi transparent</b><small>Seules les contributions confirmées sont comptées.</small></div></article>
+    </section>
+
+    <section id="projects" class="projects-section" aria-labelledby="projects-title">
+      <header class="section-heading">
+        <div><div class="eyebrow"><span></span> ÉCOSYSTÈME CR3@TIX</div><h2 id="projects-title">Soutenir un projet</h2><p>La liste vient automatiquement de CR3@TIX MAP.</p></div>
+        <div id="registryStatus" class="registry-status" role="status"><i></i><span>Synchronisation…</span></div>
+      </header>
+
+      <div class="toolbar" role="search">
+        <label class="search-field">
+          <span class="sr-only">Rechercher un projet</span>
+          <svg aria-hidden="true" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></svg>
+          <input id="searchInput" type="search" placeholder="Rechercher un projet…" autocomplete="off">
+        </label>
+        <label><span class="sr-only">Filtrer par catégorie</span><select id="categoryFilter"><option value="all">Toutes les catégories</option></select></label>
+        <label><span class="sr-only">Trier les projets</span><select id="sortSelect"><option value="featured">Mis en avant</option><option value="name">Nom A–Z</option><option value="progress">Progression</option><option value="recent">Plus récents</option></select></label>
+      </div>
+
+      <div id="projectGrid" class="project-grid" aria-live="polite" aria-busy="true"></div>
+      <div id="emptyState" class="empty-state" hidden><b>Aucun projet trouvé</b><span>Essaie un autre mot ou une autre catégorie.</span></div>
+    </section>
+
+    <section id="transparency" class="transparency" aria-labelledby="transparency-title">
+      <div>
+        <div class="eyebrow"><span></span> TRANSPARENCE</div>
+        <h2 id="transparency-title">Ce que ton soutien signifie vraiment</h2>
+        <p>Les contributions sont volontaires et ne donnent ni produit, ni service, ni part du projet, ni rendement, ni droit de décision. Elles servent uniquement à aider mes propres projets CR3@TIX.</p>
+        <a href="legal.html#contributions">Lire les informations complètes →</a>
+      </div>
+      <ul>
+        <li><i>✓</i><span><b>Aucune carte stockée</b>Le paiement est traité sur la page sécurisée du prestataire.</span></li>
+        <li><i>✓</i><span><b>Anonymat par défaut</b>Un pseudo n’est publié qu’avec un consentement explicite.</span></li>
+        <li><i>✓</i><span><b>Confirmation serveur</b>Le compteur évolue seulement après un webhook authentifié.</span></li>
+        <li><i>✓</i><span><b>Mode réel verrouillé</b>L’activation dépend d’une validation juridique et fiscale préalable.</span></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <a class="brand compact" href="./"><span class="brand-mark" aria-hidden="true"><span></span></span><span><strong>CR3@TIX</strong><small>SOUTIEN</small></span></a>
+    <p>Concepteur de projet digital • De l’imagination à la conception</p>
+    <div><a href="../">CR3@TIX MAP</a><a href="legal.html">Mentions légales</a><a href="legal.html#confidentialite">Confidentialité</a></div>
+  </footer>
+
+  <dialog id="projectDialog" class="project-dialog" aria-labelledby="projectDialogTitle">
+    <button class="dialog-close" type="button" data-close-dialog aria-label="Fermer">×</button>
+    <div id="projectDialogContent"></div>
+  </dialog>
+
+  <dialog id="supportDialog" class="support-dialog" aria-labelledby="supportTitle">
+    <form id="supportForm" method="dialog">
+      <button class="dialog-close" type="button" data-close-dialog aria-label="Fermer">×</button>
+      <div class="support-intro"><span class="support-icon" id="supportIcon">C</span><div><small>CONTRIBUTION VOLONTAIRE</small><h2 id="supportTitle">Soutenir CR3@TIX</h2><p id="supportDescription">Sans contrepartie commerciale.</p></div></div>
+      <input id="supportProjectId" type="hidden" value="global">
+      <fieldset>
+        <legend>Choisis un montant</legend>
+        <div class="amount-grid" id="amountGrid">
+          <button type="button" data-amount="200">2 €</button><button type="button" data-amount="500">5 €</button><button type="button" data-amount="1000" class="selected">10 €</button><button type="button" data-amount="2000">20 €</button><button type="button" data-amount="5000">50 €</button><button type="button" data-amount="custom">Libre</button>
+        </div>
+        <label id="customAmountWrap" class="custom-amount" hidden><span>Montant libre (2 € à 200 €)</span><span><input id="customAmount" type="number" min="2" max="200" step="1" inputmode="decimal"> €</span></label>
+      </fieldset>
+      <fieldset>
+        <legend>Affichage public</legend>
+        <label class="switch-line"><span><b>Rester anonyme</b><small>Aucun nom ou pseudo ne sera affiché.</small></span><input id="anonymousInput" type="checkbox" checked><i></i></label>
+        <label id="publicNameWrap" class="public-name" hidden><span>Pseudo public</span><input id="publicName" type="text" minlength="2" maxlength="32" autocomplete="nickname" placeholder="Ton pseudo"><small><input id="publicConsent" type="checkbox"> J’accepte explicitement l’affichage public de ce pseudo.</small></label>
+      </fieldset>
+      <label class="legal-check"><input id="termsInput" type="checkbox" required><span>J’ai compris qu’il s’agit d’un soutien volontaire sans contrepartie, sans investissement et sans réduction fiscale. Je consulte les <a href="legal.html#contributions" target="_blank">informations relatives aux contributions</a>.</span></label>
+      <div id="supportError" class="form-error" role="alert" hidden></div>
+      <button id="checkoutButton" class="button primary checkout" type="submit"><span>Continuer vers le paiement sécurisé</span><b id="checkoutAmount">10 €</b></button>
+      <p class="provider-line"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Paiement traité par Stripe Checkout • aucune donnée bancaire chez CR3@TIX</p>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="config.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

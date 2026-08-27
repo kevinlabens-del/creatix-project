@@ -8,7 +8,30 @@
   let busy = false;
   let activePin = null;
 
+  // Navigation système : le registre Supabase reste la source des projets.
+  // La vignette est ajoutée si elle n'existe pas encore, puis sera incluse dans
+  // la prochaine écriture MAP explicitement autorisée par le code administrateur.
+  const SYSTEM_NODES = [{
+    id: 'soutien',
+    parent: 'apps',
+    title: 'CR3@TIX SOUTIEN',
+    type: 'APPLICATION',
+    desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
+    x: 300,
+    y: 770,
+    url: 'https://kevinlabens-del.github.io/creatix-project/soutien/',
+    icon: 'https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg',
+    status: 'online',
+    progress: 100
+  }];
+
   const cloneState = value => JSON.parse(JSON.stringify(value));
+  const ensureSystemNodes = value => {
+    const next = cloneState(Array.isArray(value) ? value : []);
+    const ids = new Set(next.map(node => node?.id));
+    for (const node of SYSTEM_NODES) if (!ids.has(node.id)) next.push(cloneState(node));
+    return next;
+  };
 
   function ensureAdminStyles() {
     if (document.getElementById('cr3atix-admin-style')) return;
@@ -111,14 +134,14 @@
     if (!pin) pin = await requestAdminPin(fallbackAction);
     if (!pin) return false;
 
-    const result = await postState(pin, nextNodes);
+    const result = await postState(pin, ensureSystemNodes(nextNodes));
     if (!result.ok) {
       activePin = null;
       if (typeof toast === 'function') toast(result.error === 'Code incorrect' ? 'Code administrateur refusé' : result.error);
       return false;
     }
 
-    nodes = result.nodes;
+    nodes = ensureSystemNodes(result.nodes);
     activePin = null;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nodes)); } catch {}
     render();
@@ -131,12 +154,15 @@
       const response = await fetch(ENDPOINT, { method: 'GET', cache: 'no-store' });
       const body = await response.json();
       if (!response.ok || body.ok !== true || !Array.isArray(body.nodes) || !body.nodes.length) throw new Error('Invalid remote state');
-      nodes = body.nodes;
+      nodes = ensureSystemNodes(body.nodes);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nodes)); } catch {}
       render();
       setTimeout(() => { try { fit(); } catch {} }, 60);
     } catch (error) {
       console.warn('[CR3@TIX] Supabase unavailable; cached state kept read-only.', error);
+      nodes = ensureSystemNodes(nodes);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(nodes)); } catch {}
+      render();
       if (typeof toast === 'function') toast('Mode hors ligne — modifications désactivées');
     }
   }
