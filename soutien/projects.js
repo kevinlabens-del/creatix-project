@@ -16,6 +16,11 @@ function slugify(value) {
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'projet';
 }
 
+function normalizeCategory(value) {
+  const key = String(value || 'PROJET').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleUpperCase('fr').slice(0, 60);
+  return ({ JEUX: 'JEU', APPLICATIONS: 'APPLICATION', 'SITES WEB': 'SITE WEB' })[key] || key || 'PROJET';
+}
+
 function deriveRepository(url, explicit) {
   const provided = safeHttps(explicit);
   if (provided && new URL(provided).hostname === 'github.com') return provided.replace(/\/$/, '');
@@ -34,7 +39,7 @@ export function normalizeNode(node, index = 0) {
   const id = String(node.id || node.source_node_id || slugify(node.title || node.name)).slice(0, 80);
   const name = String(node.title || node.name || id).trim().slice(0, 120);
   const icon = safeHttps(node.icon || node.image, MAP_ASSET_BASE) || DEFAULT_ICON;
-  const category = String(node.category || node.type || 'PROJET').trim().slice(0, 60);
+  const category = normalizeCategory(node.category || node.type);
   const description = String(node.desc || node.description || 'Un projet de l’écosystème CR3@TIX.').trim().slice(0, 600);
   const repositoryUrl = deriveRepository(url, node.github || node.repository_url || node.repositoryUrl);
   const roadmap = Array.isArray(node.roadmap) ? node.roadmap.map(String).slice(0, 8) : [];
@@ -93,10 +98,10 @@ export async function loadProjects(config) {
   const nodes = extractNodes(payload);
   const projects = nodes
     .map(normalizeNode)
-    .filter(project => project.url && project.id !== 'root' && !['BRANCHE', 'ÉCOSYSTÈME'].includes(project.category.toUpperCase()));
+    .filter(project => project.url && project.id !== 'root' && !['BRANCHE', 'ECOSYSTEME'].includes(project.category));
   const unique = [...new Map(projects.map(project => [project.id, project])).values()];
   if (!unique.length) throw new Error('Le registre MAP ne contient aucun projet publiable.');
   return { projects: unique, source, fetchedAt: new Date().toISOString() };
 }
 
-export { safeHttps, slugify };
+export { normalizeCategory, safeHttps, slugify };

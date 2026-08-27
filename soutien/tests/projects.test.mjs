@@ -6,7 +6,7 @@ Object.defineProperty(globalThis, 'location', {
   configurable: true
 });
 
-const { loadProjects, normalizeNode, safeHttps } = await import('../projects.js');
+const { loadProjects, normalizeCategory, normalizeNode, safeHttps } = await import('../projects.js');
 const config = { mapApiUrl: 'https://map.example.test/registry', mapFallbackUrl: 'https://site.example.test/projects.json' };
 
 test.afterEach(() => { delete globalThis.fetch; });
@@ -15,6 +15,8 @@ test('normalise les champs MAP et résout les icônes relatives depuis la racine
   const project = normalizeNode({ id: 'boutik', title: 'CR3@TIX BOUTIK', type: 'DESIGN', url: 'https://example.test/boutik', icon: 'assets/project-icons/boutik.svg' });
   assert.equal(project.icon, 'https://kevinlabens-del.github.io/creatix-project/assets/project-icons/boutik.svg');
   assert.equal(safeHttps('javascript:alert(1)'), '');
+  assert.equal(normalizeCategory('Jeux'), 'JEU');
+  assert.equal(normalizeCategory('jeu'), 'JEU');
 });
 
 test('répercute une modification et une suppression du registre sans état manuel local', async () => {
