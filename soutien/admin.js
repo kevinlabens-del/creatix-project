@@ -5,13 +5,20 @@ const euro = cents => new Intl.NumberFormat('fr-FR', { style: 'currency', curren
 const number = value => new Intl.NumberFormat('fr-FR').format(Number(value) || 0);
 const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[char]));
 const state = { token: sessionStorage.getItem(tokenKey) || '', period: '30', cursor: null, transactions: [] };
+const apiErrors = Object.freeze({
+  admin_not_configured: 'L’accès administrateur n’est pas encore configuré.',
+  invalid_credentials: 'Mot de passe incorrect.',
+  rate_limited: 'Trop de tentatives. Réessaie dans quelques minutes.',
+  unauthorized: 'Session administrateur invalide ou expirée.',
+  forbidden_origin: 'Origine non autorisée.'
+});
 
 function apiUrl(path) { const base = String(config.apiBase || '').replace(/\/$/, ''); return base ? `${base}${path}` : ''; }
 async function api(path, options = {}) {
   const url = apiUrl(path); if (!url) throw new Error('Le backend Cloudflare n’est pas encore connecté.');
   const response = await fetch(url, { ...options, cache: 'no-store', headers: { accept: 'application/json', ...(options.body ? { 'content-type': 'application/json' } : {}), ...(state.token ? { authorization: `Bearer ${state.token}` } : {}), ...(options.headers || {}) } });
   let payload = {}; try { payload = await response.json(); } catch {}
-  if (!response.ok) { const error = new Error(payload.error || `Erreur ${response.status}`); error.status = response.status; throw error; }
+  if (!response.ok) { const error = new Error(apiErrors[payload.error] || payload.message || `Erreur ${response.status}`); error.status = response.status; throw error; }
   return payload;
 }
 function showError(id, message) { const box = byId(id); box.textContent = message; box.hidden = !message; }

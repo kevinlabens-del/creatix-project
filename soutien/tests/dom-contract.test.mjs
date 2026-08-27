@@ -30,7 +30,7 @@ test('la CSP refuse inline/eval et les ressources PWA déclarées existent', () 
     assert.doesNotMatch(html, /'unsafe-inline'|'unsafe-eval'/);
   }
   assert.match(read('styles.css'), /\[hidden\]\{display:none!important\}/);
-  assert.match(read('sw.js'), /cr3atix-soutien-v1\.0\.3/);
+  assert.match(read('sw.js'), /cr3atix-soutien-v1\.0\.4/);
   const manifest = JSON.parse(read('manifest.webmanifest'));
   assert.equal(manifest.start_url, './');
   for (const icon of manifest.icons) assert.ok(existsSync(`${root}${icon.src}`), `icône absente : ${icon.src}`);
