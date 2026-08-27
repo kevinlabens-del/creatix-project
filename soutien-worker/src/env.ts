@@ -9,8 +9,15 @@ export type SecretBindings = {
   LEGAL_APPROVAL_ID?: string;
 };
 
-type MutableConfiguration = {
+type RuntimeBindings = {
+  DB: D1Database;
+  ENVIRONMENT: string;
+  FRONTEND_ORIGIN: string;
+  FRONTEND_BASE_URL: string;
+  MAP_API_URL: string;
   PAYMENT_MODE: 'disabled' | 'test' | 'live';
+  MIN_CONTRIBUTION_CENTS: string;
+  MAX_CONTRIBUTION_CENTS: string;
 };
 
-export type AppEnv = Omit<Env, keyof MutableConfiguration> & MutableConfiguration & SecretBindings;
+export type AppEnv = RuntimeBindings & SecretBindings;
