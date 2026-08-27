@@ -98,3 +98,16 @@
     world.style.height = `${WORLD.height}px`;
   }, { passive: true });
 })();
+
+// CR3@TIX ANALYTIX — runtime loader. This file is copied into the final
+// GitHub Pages artifact by the MAP deployment workflow, so tracking survives
+// the ZIP-based build pipeline.
+(() => {
+  if (document.querySelector('script[data-project-id="0c8c04fe-a4fb-450d-a05f-2abdaf1400be"]')) return;
+  const script = document.createElement('script');
+  script.async = true;
+  script.src = 'https://kevinlabens-del.github.io/CR3-TIX-ANALYTIX./analytics.js';
+  script.dataset.projectId = '0c8c04fe-a4fb-450d-a05f-2abdaf1400be';
+  script.dataset.projectKey = '432b28f8-846b-4b7c-8912-9bc7edd6ccbc';
+  document.head.appendChild(script);
+})();
