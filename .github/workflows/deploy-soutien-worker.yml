@@ -58,43 +58,16 @@ jobs:
           API_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database"
           curl --fail-with-body --silent --show-error             --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "${API_URL}?name=cr3atix-soutien-db"             --output d1-list.json
 
-          DB_ID="$(node <<'NODE'
-          const fs = require('fs');
-          const payload = JSON.parse(fs.readFileSync('d1-list.json', 'utf8'));
-          if (payload.success !== true) process.exit(2);
-          const database = Array.isArray(payload.result)
-            ? payload.result.find(item => item && item.name === 'cr3atix-soutien-db')
-            : null;
-          if (database?.uuid) process.stdout.write(database.uuid);
-          NODE
-          )"
+          DB_ID="$(node -e "const p=require('./d1-list.json'); if(p.success!==true) process.exit(2); const d=Array.isArray(p.result)?p.result.find(x=>x&&x.name==='cr3atix-soutien-db'):null; if(d?.uuid) process.stdout.write(d.uuid)")"
 
           if [ -z "${DB_ID}" ]; then
             curl --fail-with-body --silent --show-error               --request POST               --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"               --header "Content-Type: application/json"               --data '{"name":"cr3atix-soutien-db","jurisdiction":"eu","read_replication":{"mode":"disabled"}}'               "${API_URL}"               --output d1-create.json
-            DB_ID="$(node <<'NODE'
-            const fs = require('fs');
-            const payload = JSON.parse(fs.readFileSync('d1-create.json', 'utf8'));
-            if (payload.success !== true || !payload.result?.uuid) {
-              console.error('Cloudflare did not return a D1 database identifier');
-              process.exit(2);
-            }
-            process.stdout.write(payload.result.uuid);
-            NODE
-            )"
+            DB_ID="$(node -e "const p=require('./d1-create.json'); if(p.success!==true||!p.result?.uuid){console.error('Cloudflare did not return a D1 database identifier');process.exit(2)} process.stdout.write(p.result.uuid)")"
           fi
 
           [[ "${DB_ID}" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo "::error::Invalid D1 database identifier"; exit 1; }
 
-          DB_ID="${DB_ID}" node <<'NODE'
-          const fs = require('fs');
-          const path = 'wrangler.jsonc';
-          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
-          const binding = config.d1_databases?.find(item => item.binding === 'DB');
-          if (!binding) throw new Error('Missing DB binding');
-          binding.database_id = process.env.DB_ID;
-          binding.database_name = 'cr3atix-soutien-db';
-          fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
-          NODE
+          DB_ID="${DB_ID}" node -e "const fs=require('fs');const path='wrangler.jsonc';const config=JSON.parse(fs.readFileSync(path,'utf8'));const binding=config.d1_databases?.find(x=>x.binding==='DB');if(!binding)throw new Error('Missing DB binding');binding.database_id=process.env.DB_ID;binding.database_name='cr3atix-soutien-db';fs.writeFileSync(path,JSON.stringify(config,null,2)+'\\n')"
 
           rm -f d1-list.json d1-create.json
           echo "database_id=${DB_ID}" >> "${GITHUB_OUTPUT}"
