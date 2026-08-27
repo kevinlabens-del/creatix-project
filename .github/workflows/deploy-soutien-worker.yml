@@ -1,0 +1,151 @@
+name: Deploy SOUTIEN Worker (payments disabled)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - ".github/workflows/deploy-soutien-worker.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: soutien-worker-disabled
+  cancel-in-progress: false
+
+jobs:
+  deploy-disabled:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: soutien-worker
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: soutien-worker/package-lock.json
+
+      - name: Validate protected credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CLOUDFLARE_API_TOKEN:-}" || { echo "::error::Missing CLOUDFLARE_API_TOKEN repository secret"; exit 1; }
+          test -n "${CLOUDFLARE_ACCOUNT_ID:-}" || { echo "::error::Missing CLOUDFLARE_ACCOUNT_ID repository secret"; exit 1; }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify source before deployment
+        run: npm run check
+
+      - name: Provision EU D1 database
+        id: d1
+        shell: bash
+        run: |
+          set -euo pipefail
+          API_URL="https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/d1/database"
+          curl --fail-with-body --silent --show-error             --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"             "${API_URL}?name=cr3atix-soutien-db"             --output d1-list.json
+
+          DB_ID="$(node <<'NODE'
+          const fs = require('fs');
+          const payload = JSON.parse(fs.readFileSync('d1-list.json', 'utf8'));
+          if (payload.success !== true) process.exit(2);
+          const database = Array.isArray(payload.result)
+            ? payload.result.find(item => item && item.name === 'cr3atix-soutien-db')
+            : null;
+          if (database?.uuid) process.stdout.write(database.uuid);
+          NODE
+          )"
+
+          if [ -z "${DB_ID}" ]; then
+            curl --fail-with-body --silent --show-error               --request POST               --header "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}"               --header "Content-Type: application/json"               --data '{"name":"cr3atix-soutien-db","jurisdiction":"eu","read_replication":{"mode":"disabled"}}'               "${API_URL}"               --output d1-create.json
+            DB_ID="$(node <<'NODE'
+            const fs = require('fs');
+            const payload = JSON.parse(fs.readFileSync('d1-create.json', 'utf8'));
+            if (payload.success !== true || !payload.result?.uuid) {
+              console.error('Cloudflare did not return a D1 database identifier');
+              process.exit(2);
+            }
+            process.stdout.write(payload.result.uuid);
+            NODE
+            )"
+          fi
+
+          [[ "${DB_ID}" =~ ^[0-9a-fA-F-]{36}$ ]] || { echo "::error::Invalid D1 database identifier"; exit 1; }
+
+          DB_ID="${DB_ID}" node <<'NODE'
+          const fs = require('fs');
+          const path = 'wrangler.jsonc';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const binding = config.d1_databases?.find(item => item.binding === 'DB');
+          if (!binding) throw new Error('Missing DB binding');
+          binding.database_id = process.env.DB_ID;
+          binding.database_name = 'cr3atix-soutien-db';
+          fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
+          NODE
+
+          rm -f d1-list.json d1-create.json
+          echo "database_id=${DB_ID}" >> "${GITHUB_OUTPUT}"
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply cr3atix-soutien-db --remote --config wrangler.jsonc
+
+      - name: Deploy locked Worker
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx wrangler deploy --minify --config wrangler.jsonc 2>&1 | tee deploy.log
+          WORKER_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' deploy.log | head -n 1 || true)"
+          test -n "${WORKER_URL}" || { echo "::error::Unable to determine Worker URL"; exit 1; }
+          echo "worker_url=${WORKER_URL}" >> "${GITHUB_OUTPUT}"
+
+      - name: Configure technical security secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          RATE_LIMIT_SALT="$(openssl rand -hex 32)"
+          SESSION_SECRET="$(openssl rand -hex 32)"
+          printf '%s' "${RATE_LIMIT_SALT}" | npx wrangler secret put RATE_LIMIT_SALT --config wrangler.jsonc
+          printf '%s' "${SESSION_SECRET}" | npx wrangler secret put SESSION_SECRET --config wrangler.jsonc
+          unset RATE_LIMIT_SALT SESSION_SECRET
+
+      - name: Smoke-test locked API
+        env:
+          WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "${WORKER_URL}/v1/health" --output health.json
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 "${WORKER_URL}/v1/projects" --output projects.json
+          WORKER_URL="${WORKER_URL}" node <<'NODE'
+          const fs = require('fs');
+          const health = JSON.parse(fs.readFileSync('health.json', 'utf8'));
+          const registry = JSON.parse(fs.readFileSync('projects.json', 'utf8'));
+          if (health.ok !== true || health.payments_enabled !== false || health.payment_mode !== 'disabled') {
+            throw new Error('The Worker is not safely locked');
+          }
+          if (!Array.isArray(registry.projects) || registry.projects.length === 0) {
+            throw new Error('MAP registry is unavailable through the Worker');
+          }
+          console.log('Locked health check passed; MAP projects:', registry.projects.length);
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+            '## CR3@TIX SOUTIEN Worker\n\n' +
+            '- URL: ' + process.env.WORKER_URL + '\n' +
+            '- Payment mode: **disabled**\n' +
+            '- Payments enabled: **false**\n' +
+            '- MAP projects returned: **' + registry.projects.length + '**\n');
+          NODE
+          rm -f health.json projects.json deploy.log
