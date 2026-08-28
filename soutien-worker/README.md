@@ -47,14 +47,24 @@ Reporter l’identifiant retourné dans `wrangler.jsonc`, puis :
 npx wrangler d1 migrations apply cr3atix-soutien-db --remote
 npx wrangler secret put SESSION_SECRET
 npx wrangler secret put RATE_LIMIT_SALT
+npx wrangler secret put ADMIN_PASSWORD_PEPPER
 npx wrangler secret put ADMIN_PASSWORD_HASH
 npm run deploy
 ```
 
 `SESSION_SECRET` et `RATE_LIMIT_SALT` doivent être différents et aléatoires. Le
-mot de passe administrateur doit être transformé avec `npm run hash-admin`, en
-passant la valeur uniquement par la variable locale `CR3ATIX_ADMIN_PASSWORD`.
-Le hash produit, et jamais le mot de passe, devient `ADMIN_PASSWORD_HASH`.
+mot de passe administrateur doit contenir au moins 14 caractères. Il est vérifié
+par HMAC-SHA-256 avec un pepper aléatoire de 256 bits : le pepper et le résultat
+HMAC sont stockés séparément comme secrets Worker (`ADMIN_PASSWORD_PEPPER` et
+`ADMIN_PASSWORD_HASH`). Aucun des deux ne doit être écrit dans le dépôt.
+
+Pour une configuration manuelle, générer le pepper avec `openssl rand -hex 32`,
+puis lancer `npm run hash-admin` en transmettant uniquement
+`CR3ATIX_ADMIN_PASSWORD` et `ADMIN_PASSWORD_PEPPER` dans l’environnement local.
+Le workflow de production effectue cette opération et charge les secrets avec le
+code dans une même version Cloudflare. La connexion reste limitée à cinq essais
+par minute et la session expire après 30 minutes. Cette vérification légère évite
+le dépassement des 10 ms CPU du forfait Workers Free rencontré avec PBKDF2.
 
 Après déploiement, reporter l’URL exacte du Worker dans `soutien/config.js`. Le
 frontend devient alors capable d’afficher santé, statistiques et administration,
@@ -73,7 +83,6 @@ Après acceptation explicite du compte, utiliser exclusivement les identifiants 
 ```bash
 npx wrangler secret put STRIPE_SECRET_KEY
 npx wrangler secret put STRIPE_WEBHOOK_SECRET
-npx wrangler secret put ADMIN_PASSWORD_HASH
 ```
 
 Configurer dans Stripe un webhook vers

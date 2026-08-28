@@ -13,25 +13,18 @@ function toBase64Url(bytes: Uint8Array): string {
   let binary = ''; for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
-function constantTimeEqual(left: Uint8Array, right: Uint8Array): boolean {
-  if (left.length !== right.length) return false;
-  let difference = 0; for (let index = 0; index < left.length; index += 1) difference |= left[index]! ^ right[index]!;
-  return difference === 0;
-}
-
 export async function sha256Hex(value: string): Promise<string> {
   return toHex(new Uint8Array(await crypto.subtle.digest('SHA-256', encoder.encode(value))));
 }
 
-export async function verifyPassword(password: string, encodedHash: string): Promise<boolean> {
-  const [algorithm, iterationsText, saltText, hashText] = encodedHash.split('$');
-  const iterations = Number(iterationsText);
-  if (algorithm !== 'pbkdf2_sha256' || !Number.isInteger(iterations) || iterations < 210000 || !saltText || !hashText || password.length > 512) return false;
-  let salt: Uint8Array, expected: Uint8Array;
-  try { salt = fromBase64Url(saltText); expected = fromBase64Url(hashText); } catch { return false; }
-  const key = await crypto.subtle.importKey('raw', encoder.encode(password), 'PBKDF2', false, ['deriveBits']);
-  const actual = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: salt.buffer as ArrayBuffer, iterations }, key, expected.length * 8));
-  return constantTimeEqual(actual, expected);
+export async function verifyPassword(password: string, encodedHash: string, pepper: string): Promise<boolean> {
+  const [algorithm, hashText, extra] = encodedHash.split('$');
+  if (algorithm !== 'hmac_sha256' || extra !== undefined || !/^[A-Za-z0-9_-]{43}$/.test(hashText || '') || !/^[0-9a-f]{64}$/i.test(pepper) || password.length < 14 || password.length > 512) return false;
+  let expected: Uint8Array;
+  try { expected = fromBase64Url(hashText!); } catch { return false; }
+  if (expected.length !== 32) return false;
+  const key = await crypto.subtle.importKey('raw', encoder.encode(pepper), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify('HMAC', key, expected.buffer as ArrayBuffer, encoder.encode(password));
 }
 
 export function randomToken(): string { const bytes = new Uint8Array(32); crypto.getRandomValues(bytes); return toBase64Url(bytes); }

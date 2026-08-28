@@ -76,40 +76,54 @@ jobs:
       - name: Apply D1 migrations
         run: npx wrangler d1 migrations apply cr3atix-soutien-db --remote --config wrangler.jsonc
 
-      - name: Deploy locked Worker
-        id: deploy
-        shell: bash
-        run: |
-          set -euo pipefail
-          npx wrangler deploy --minify --config wrangler.jsonc 2>&1 | tee deploy.log
-          WORKER_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' deploy.log | head -n 1 || true)"
-          test -n "${WORKER_URL}" || { echo "::error::Unable to determine Worker URL"; exit 1; }
-          echo "worker_url=${WORKER_URL}" >> "${GITHUB_OUTPUT}"
-
-      - name: Configure technical security secrets
-        shell: bash
-        run: |
-          set -euo pipefail
-          RATE_LIMIT_SALT="$(openssl rand -hex 32)"
-          SESSION_SECRET="$(openssl rand -hex 32)"
-          printf '%s' "${RATE_LIMIT_SALT}" | npx wrangler secret put RATE_LIMIT_SALT --config wrangler.jsonc
-          printf '%s' "${SESSION_SECRET}" | npx wrangler secret put SESSION_SECRET --config wrangler.jsonc
-          unset RATE_LIMIT_SALT SESSION_SECRET
-
-      - name: Configure optional administrator password
+      - name: Prepare protected deployment secrets
         env:
           CR3ATIX_ADMIN_PASSWORD: ${{ secrets.CR3ATIX_ADMIN_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${CR3ATIX_ADMIN_PASSWORD:-}" ]; then
+          RATE_LIMIT_SALT="$(openssl rand -hex 32)"
+          SESSION_SECRET="$(openssl rand -hex 32)"
+          ADMIN_PASSWORD_PEPPER=""
+          ADMIN_PASSWORD_HASH=""
+
+          if [ -n "${CR3ATIX_ADMIN_PASSWORD:-}" ]; then
+            ADMIN_PASSWORD_PEPPER="$(openssl rand -hex 32)"
+            ADMIN_PASSWORD_HASH="$(ADMIN_PASSWORD_PEPPER="${ADMIN_PASSWORD_PEPPER}" node scripts/hash-admin-password.mjs)"
+            [[ "${ADMIN_PASSWORD_HASH}" == hmac_sha256\$* ]] || { echo "::error::Invalid administrator password verifier"; exit 1; }
+          else
             echo "Administrator password is not configured; public API remains available and admin login stays locked."
-            exit 0
           fi
-          ADMIN_PASSWORD_HASH="$(node scripts/hash-admin-password.mjs)"
-          [[ "${ADMIN_PASSWORD_HASH}" == pbkdf2_sha256\$* ]] || { echo "::error::Invalid administrator password hash"; exit 1; }
-          printf '%s' "${ADMIN_PASSWORD_HASH}" | npx wrangler secret put ADMIN_PASSWORD_HASH --config wrangler.jsonc
-          unset ADMIN_PASSWORD_HASH CR3ATIX_ADMIN_PASSWORD
+
+          RATE_LIMIT_SALT="${RATE_LIMIT_SALT}" \
+          SESSION_SECRET="${SESSION_SECRET}" \
+          ADMIN_PASSWORD_PEPPER="${ADMIN_PASSWORD_PEPPER}" \
+          ADMIN_PASSWORD_HASH="${ADMIN_PASSWORD_HASH}" \
+          node <<'NODE'
+          const fs = require('fs');
+          const secrets = {
+            RATE_LIMIT_SALT: process.env.RATE_LIMIT_SALT,
+            SESSION_SECRET: process.env.SESSION_SECRET
+          };
+          if (process.env.ADMIN_PASSWORD_HASH && process.env.ADMIN_PASSWORD_PEPPER) {
+            secrets.ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
+            secrets.ADMIN_PASSWORD_PEPPER = process.env.ADMIN_PASSWORD_PEPPER;
+          }
+          fs.writeFileSync('deploy-secrets.json', JSON.stringify(secrets));
+          NODE
+
+          unset RATE_LIMIT_SALT SESSION_SECRET ADMIN_PASSWORD_PEPPER ADMIN_PASSWORD_HASH CR3ATIX_ADMIN_PASSWORD
+      - name: Deploy locked Worker
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s deploy-secrets.json || { echo "::error::Missing protected deployment secrets file"; exit 1; }
+          trap 'rm -f deploy-secrets.json' EXIT
+          npx wrangler deploy --minify --config wrangler.jsonc --secrets-file deploy-secrets.json 2>&1 | tee deploy.log
+          WORKER_URL="$(grep -Eo 'https://[A-Za-z0-9._-]+\.workers\.dev' deploy.log | head -n 1 || true)"
+          test -n "${WORKER_URL}" || { echo "::error::Unable to determine Worker URL"; exit 1; }
+          echo "worker_url=${WORKER_URL}" >> "${GITHUB_OUTPUT}"
 
       - name: Smoke-test locked API
         env:

@@ -1,11 +1,17 @@
-import { pbkdf2Sync, randomBytes } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 
 const password = process.env.CR3ATIX_ADMIN_PASSWORD || '';
-if (password.length < 14) {
-  console.error('Définis CR3ATIX_ADMIN_PASSWORD avec au moins 14 caractères, sans l’écrire dans le dépôt.');
+const pepper = process.env.ADMIN_PASSWORD_PEPPER || '';
+
+if (password.length < 14 || password.length > 512) {
+  console.error('Définis CR3ATIX_ADMIN_PASSWORD avec 14 à 512 caractères, sans l’écrire dans le dépôt.');
   process.exit(1);
 }
-const iterations = 310000;
-const salt = randomBytes(24);
-const digest = pbkdf2Sync(password, salt, iterations, 32, 'sha256');
-console.log(`pbkdf2_sha256$${iterations}$${salt.toString('base64url')}$${digest.toString('base64url')}`);
+
+if (!/^[0-9a-f]{64}$/i.test(pepper)) {
+  console.error('Définis ADMIN_PASSWORD_PEPPER avec 32 octets aléatoires encodés en hexadécimal.');
+  process.exit(1);
+}
+
+const digest = createHmac('sha256', pepper).update(password, 'utf8').digest('base64url');
+console.log(`hmac_sha256$${digest}`);

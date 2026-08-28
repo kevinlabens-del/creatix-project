@@ -7,12 +7,11 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function passwordHash(password: string): Promise<string> {
-  const salt = new Uint8Array(16).fill(7);
-  const iterations = 210000;
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
-  const derived = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, key, 256));
-  return `pbkdf2_sha256$${iterations}$${base64Url(salt)}$${base64Url(derived)}`;
+async function passwordHash(password: string, pepper: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', encoder.encode(pepper), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  const digest = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(password)));
+  return `hmac_sha256$${base64Url(digest)}`;
 }
 
 describe('security primitives', () => {
@@ -40,10 +39,13 @@ describe('security primitives', () => {
     expect(second).not.toBe(first);
   });
 
-  it('verifies PBKDF2 admin passwords without accepting malformed hashes', async () => {
-    const encoded = await passwordHash('correct horse battery staple');
-    expect(await verifyPassword('correct horse battery staple', encoded)).toBe(true);
-    expect(await verifyPassword('wrong', encoded)).toBe(false);
-    expect(await verifyPassword('anything', 'pbkdf2_sha256$2$bad$bad')).toBe(false);
+  it('verifies keyed admin passwords without accepting malformed or legacy hashes', async () => {
+    const pepper = 'a'.repeat(64);
+    const encoded = await passwordHash('correct horse battery staple', pepper);
+    expect(await verifyPassword('correct horse battery staple', encoded, pepper)).toBe(true);
+    expect(await verifyPassword('wrong password value', encoded, pepper)).toBe(false);
+    expect(await verifyPassword('correct horse battery staple', encoded, 'b'.repeat(64))).toBe(false);
+    expect(await verifyPassword('correct horse battery staple', 'hmac_sha256$bad', pepper)).toBe(false);
+    expect(await verifyPassword('correct horse battery staple', 'pbkdf2_sha256$210000$bad$bad', pepper)).toBe(false);
   });
 });

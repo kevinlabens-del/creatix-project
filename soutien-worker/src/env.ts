@@ -2,6 +2,7 @@ export type SecretBindings = {
   STRIPE_SECRET_KEY?: string;
   STRIPE_WEBHOOK_SECRET?: string;
   ADMIN_PASSWORD_HASH?: string;
+  ADMIN_PASSWORD_PEPPER?: string;
   SESSION_SECRET?: string;
   RATE_LIMIT_SALT?: string;
   TURNSTILE_SECRET_KEY?: string;

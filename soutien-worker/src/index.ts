@@ -154,8 +154,8 @@ async function stripeWebhook(request: Request, env: AppEnv): Promise<Response> {
 async function adminLogin(request: Request, env: AppEnv): Promise<Response> {
   requireAllowedOrigin(request, env); await enforceRateLimit(request, env, 'admin_login', 5);
   const body = await readJsonLimited(request, 2048), password = typeof body.password === 'string' ? body.password : '';
-  if (!env.ADMIN_PASSWORD_HASH) throw new HttpError(503, 'admin_not_configured');
-  if (password.length < 14 || !await verifyPassword(password, env.ADMIN_PASSWORD_HASH)) throw new HttpError(401, 'invalid_credentials');
+  if (!env.ADMIN_PASSWORD_HASH || !env.ADMIN_PASSWORD_PEPPER) throw new HttpError(503, 'admin_not_configured');
+  if (password.length < 14 || !await verifyPassword(password, env.ADMIN_PASSWORD_HASH, env.ADMIN_PASSWORD_PEPPER)) throw new HttpError(401, 'invalid_credentials');
   const session = await createAdminSession(env); return apiResponse(request, env, session, 201);
 }
 
