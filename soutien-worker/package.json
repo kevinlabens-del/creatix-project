@@ -1,6 +1,6 @@
 {
   "name": "cr3atix-soutien-worker",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,9 +14,6 @@
     "db:local": "wrangler d1 migrations apply cr3atix-soutien-db --local",
     "deploy": "wrangler deploy --minify",
     "hash-admin": "node scripts/hash-admin-password.mjs"
-  },
-  "dependencies": {
-    "stripe": "22.6.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260827.1",

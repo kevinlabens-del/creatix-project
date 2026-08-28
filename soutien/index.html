@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070816">
   <meta name="description" content="Soutenez volontairement les projets numériques CR3@TIX, sans contrepartie commerciale.">
   <meta name="robots" content="index,follow">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https://gwqojqwcbwoulxrctaqz.supabase.co https://*.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://static.cloudflareinsights.com; style-src 'self'; img-src 'self' data: https:; connect-src 'self' https://gwqojqwcbwoulxrctaqz.supabase.co https://*.workers.dev; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self' https://www.paypal.com https://www.sandbox.paypal.com; frame-ancestors 'none'; upgrade-insecure-requests">
   <title>CR3@TIX SOUTIEN — Soutenir les projets</title>
   <link rel="canonical" href="https://kevinlabens-del.github.io/creatix-project/soutien/">
   <link rel="manifest" href="manifest.webmanifest">
@@ -98,7 +98,7 @@
         <li><i>✓</i><span><b>Aucune carte stockée</b>Le paiement est traité sur la page sécurisée du prestataire.</span></li>
         <li><i>✓</i><span><b>Anonymat par défaut</b>Un pseudo n’est publié qu’avec un consentement explicite.</span></li>
         <li><i>✓</i><span><b>Confirmation serveur</b>Le compteur évolue seulement après un webhook authentifié.</span></li>
-        <li><i>✓</i><span><b>Mode réel verrouillé</b>L’activation dépend d’une validation juridique et fiscale préalable.</span></li>
+        <li><i>✓</i><span><b>Activation contrôlée</b>Le compte PayPal personnel doit être accepté comme bénéficiaire du bouton Donate.</span></li>
       </ul>
     </section>
   </main>
@@ -134,7 +134,7 @@
       <label class="legal-check"><input id="termsInput" type="checkbox" required><span>J’ai compris qu’il s’agit d’un soutien volontaire sans contrepartie, sans investissement et sans réduction fiscale. Je consulte les <a href="legal.html#contributions" target="_blank">informations relatives aux contributions</a>.</span></label>
       <div id="supportError" class="form-error" role="alert" hidden></div>
       <button id="checkoutButton" class="button primary checkout" type="submit"><span>Continuer vers le paiement sécurisé</span><b id="checkoutAmount">10 €</b></button>
-      <p class="provider-line"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Paiement traité par Stripe Checkout • aucune donnée bancaire chez CR3@TIX</p>
+      <p class="provider-line"><svg aria-hidden="true" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg> Paiement traité par PayPal • aucune donnée bancaire chez CR3@TIX</p>
     </form>
   </dialog>
 

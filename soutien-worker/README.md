@@ -1,25 +1,23 @@
-# CR3@TIX SOUTIEN — Worker sécurisé
+# CR3@TIX SOUTIEN — Worker PayPal sécurisé
 
-API Cloudflare Workers + D1 pour le mode TEST Stripe Checkout de CR3@TIX SOUTIEN.
+API Cloudflare Workers + D1 de CR3@TIX SOUTIEN. Le frontend reste sur GitHub
+Pages et ne contient aucun secret ni aucune donnée bancaire.
 
-## Séparation des responsabilités
+## Architecture de confiance
 
-- GitHub Pages affiche l’interface et ne contient aucun secret.
-- Le Worker valide le projet et le montant, puis crée la session Stripe.
-- Stripe héberge la saisie bancaire.
-- D1 ne confirme une contribution qu’après webhook Stripe signé.
-- Le mode réel exige trois verrous serveur : `PAYMENT_MODE=live`, `ALLOW_LIVE_PAYMENTS=yes` et un `LEGAL_APPROVAL_ID` documenté.
+1. Le navigateur choisit un projet issu de CR3@TIX MAP et envoie un UUID unique.
+2. Le Worker revalide l’origine, le projet, le montant, l’anonymat et le consentement.
+3. D1 crée une intention `pending` avant de produire le formulaire PayPal.
+4. Le navigateur transmet directement ce formulaire HTTPS à PayPal.
+5. Le retour navigateur n’accorde jamais le statut `paid`.
+6. PayPal envoie une IPN au Worker ; celui-ci renvoie le corps exact à PayPal
+   avec `cmd=_notify-validate` et exige la réponse `VERIFIED`.
+7. Le Worker contrôle ensuite le bénéficiaire, l’identifiant de transaction,
+   l’UUID, la facture, le projet, la devise et le montant avant confirmation.
 
-## Flux de confiance
-
-1. Le navigateur envoie un identifiant UUID unique, le projet MAP et le montant.
-2. Le Worker revalide origine, UUID, bornes, consentement et projet auprès de MAP.
-3. D1 réserve l’identifiant d’idempotence avant l’appel au prestataire.
-4. Stripe Checkout héberge toute saisie de carte.
-5. Le retour navigateur n’accorde aucun statut payé.
-6. Seul un événement Stripe signé, non rejoué et dont montant/devise/session correspondent à D1 fait passer la contribution à `paid`.
-
-Les numéros de carte et cryptogrammes ne transitent dans aucune route CR3@TIX.
+Les événements sont idempotents. Les doublons, relectures, champs critiques
+dupliqués et incohérences de montant sont rejetés. Les numéros de carte et les
+cryptogrammes ne transitent dans aucune route CR3@TIX.
 
 ## Développement local
 
@@ -27,99 +25,49 @@ Les numéros de carte et cryptogrammes ne transitent dans aucune route CR3@TIX.
 npm ci
 cp .dev.vars.example .dev.vars
 npm run db:local
-npm run dev
 npm run check
+npm run dev
 ```
 
-Ne jamais committer `.dev.vars`, une clé Stripe, un secret webhook, un mot de passe ou un jeton Cloudflare.
+Ne jamais committer `.dev.vars`, un mot de passe, un secret administrateur ou
+un jeton Cloudflare.
 
-## Déploiement Cloudflare en mode verrouillé
+## Modes de paiement
 
-Prérequis : compte Cloudflare authentifié dans Wrangler.
+- `disabled` : aucun paiement ; projets, statistiques et admin restent disponibles.
+- `test` : PayPal Sandbox avec un compte personnel Sandbox.
+- `live` : PayPal réel, uniquement si `ALLOW_LIVE_PAYMENTS=yes` est aussi défini.
 
-```bash
-npx wrangler d1 create cr3atix-soutien-db
-```
+Secrets GitHub Actions prévus :
 
-Reporter l’identifiant retourné dans `wrangler.jsonc`, puis :
+- `PAYPAL_BUSINESS_ID` : Payer ID PayPal du bénéficiaire, de préférence à une adresse email ;
+- `PAYPAL_RECEIVER_ID` : Payer ID attendu dans l’IPN ;
+- `PAYPAL_RECEIVER_EMAIL` : alternative lorsque PayPal ne fournit qu’une adresse ;
+- `SOUTIEN_PAYMENT_MODE` : `disabled`, `test` ou `live` ;
+- `ALLOW_LIVE_PAYMENTS` : `yes` seulement pour une activation réelle volontaire.
 
-```bash
-npx wrangler d1 migrations apply cr3atix-soutien-db --remote
-npx wrangler secret put SESSION_SECRET
-npx wrangler secret put RATE_LIMIT_SALT
-npx wrangler secret put ADMIN_PASSWORD_PEPPER
-npx wrangler secret put ADMIN_PASSWORD_HASH
-npm run deploy
-```
+Le `PAYPAL_BUSINESS_ID` est nécessairement envoyé au navigateur dans le
+formulaire PayPal ; il ne doit pas être confondu avec un mot de passe ou une clé
+d’API. Aucun secret PayPal permettant de prendre le contrôle du compte n’est
+utilisé par cette intégration.
 
-`SESSION_SECRET` et `RATE_LIMIT_SALT` doivent être différents et aléatoires. Le
-mot de passe administrateur doit contenir au moins 14 caractères. Il est vérifié
-par HMAC-SHA-256 avec un pepper aléatoire de 256 bits : le pepper et le résultat
-HMAC sont stockés séparément comme secrets Worker (`ADMIN_PASSWORD_PEPPER` et
-`ADMIN_PASSWORD_HASH`). Aucun des deux ne doit être écrit dans le dépôt.
+L’URL IPN est placée dans chaque formulaire (`notify_url`) :
+`https://cr3atix-soutien-api.creatixprojet.workers.dev/v1/webhooks/paypal`.
 
-Pour une configuration manuelle, générer le pepper avec `openssl rand -hex 32`,
-puis lancer `npm run hash-admin` en transmettant uniquement
-`CR3ATIX_ADMIN_PASSWORD` et `ADMIN_PASSWORD_PEPPER` dans l’environnement local.
-Le workflow de production effectue cette opération et charge les secrets avec le
-code dans une même version Cloudflare. La connexion reste limitée à cinq essais
-par minute et la session expire après 30 minutes. Cette vérification légère évite
-le dépassement des 10 ms CPU du forfait Workers Free rencontré avec PBKDF2.
+## Compte personnel et activation réelle
 
-Après déploiement, reporter l’URL exacte du Worker dans `soutien/config.js`. Le
-frontend devient alors capable d’afficher santé, statistiques et administration,
-mais `PAYMENT_MODE=disabled` continue de refuser toute création de paiement.
+Le Donate SDK PayPal documente l’utilisation d’un compte personnel via le champ
+`business`. L’éligibilité réelle reste toutefois décidée par PayPal selon le
+compte et l’usage. Le workflow garde donc le réel fermé tant que les deux verrous
+`SOUTIEN_PAYMENT_MODE=live` et `ALLOW_LIVE_PAYMENTS=yes` ne sont pas présents.
 
-## Activation Stripe TEST
+Ce choix technique ne garantit ni absence d’impôt, ni absence de déclaration,
+ni absence future de statut professionnel. Si PayPal exige un compte Business
+ou un numéro d’entreprise, le mode réel doit rester désactivé.
 
-Ne créer un compte Stripe qu’après avoir vérifié l’éligibilité du bénéficiaire
-réel. Les conditions Stripe visent une entreprise (y compris entrepreneur
-individuel), une entité publique ou un organisme à but non lucratif, sous
-réserve d’approbation ; certaines collectes de fonds sont restreintes. Un
-particulier français sans statut ne doit donc pas être supposé éligible.
+## Administration
 
-Après acceptation explicite du compte, utiliser exclusivement les identifiants de test :
-
-```bash
-npx wrangler secret put STRIPE_SECRET_KEY
-npx wrangler secret put STRIPE_WEBHOOK_SECRET
-```
-
-Configurer dans Stripe un webhook vers
-`https://<worker>/v1/webhooks/stripe` pour les événements :
-
-- `checkout.session.completed`
-- `checkout.session.async_payment_succeeded`
-- `checkout.session.async_payment_failed`
-- `checkout.session.expired`
-- `payment_intent.payment_failed`
-- `charge.refunded`
-
-Passer ensuite `PAYMENT_MODE` à `test` dans `wrangler.jsonc` et redéployer. Une
-clé commençant par `sk_live_` n’est pas acceptée pour ce mode.
-
-Ne définir `TURNSTILE_SECRET_KEY` qu’après avoir connecté un widget Turnstile au
-frontend ; sinon les checkouts seront volontairement refusés.
-
-## Passage TEST → RÉEL
-
-Le code exige simultanément :
-
-- `PAYMENT_MODE=live` ;
-- une clé Stripe `sk_live_` et le secret du webhook live ;
-- le secret `ALLOW_LIVE_PAYMENTS=yes` ;
-- un `LEGAL_APPROVAL_ID` d’au moins huit caractères documentant la validation ;
-- les mentions d’identité, contact, conservation et droits complétées dans le frontend.
-
-Ces verrous techniques ne remplacent pas la validation fiscale, sociale,
-réglementaire et contractuelle. Pour une personne physique en France, ne pas les
-ouvrir avant une position adaptée aux faits (notamment rescrit ou conseil
-professionnel), les déclarations nécessaires et l’acceptation du prestataire.
-
-## Administration et conservation
-
-Les sessions administrateur expirent après 30 minutes et seul leur condensat est
-stocké. Les exports CSV neutralisent les formules de tableur. Une tâche planifiée
-supprime les jetons expirés et les traces anti-abus courtes ; les transactions ne
-sont pas supprimées automatiquement, afin de permettre une politique de
-conservation conforme aux obligations réellement applicables avant le réel.
+Le mot de passe administrateur est vérifié par HMAC-SHA-256 avec un pepper
+aléatoire. Les sessions expirent après 30 minutes, les exports CSV neutralisent
+les formules de tableur et aucune adresse IP brute n’est conservée dans les
+transactions.

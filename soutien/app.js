@@ -113,7 +113,7 @@ function renderTotals() {
   byId('paymentMode').textContent = mode === 'test' ? 'TEST' : mode === 'live' ? 'RÉEL' : 'VERROUILLÉ';
   byId('servicePulse').className = state.health?.ok ? 'online' : 'offline';
   const enabled = !!state.health?.payments_enabled;
-  byId('modeNotice').textContent = enabled && mode === 'test' ? 'Mode Stripe TEST : aucune carte réelle n’est débitée.' : enabled && mode === 'live' ? 'Paiements réels activés après validation.' : 'Aucun paiement réel n’est activé.';
+  byId('modeNotice').textContent = enabled && mode === 'test' ? 'Mode PayPal SANDBOX : aucun argent réel n’est transféré.' : enabled && mode === 'live' ? 'Paiements PayPal réels activés.' : 'PayPal est prêt mais aucun paiement n’est activé.';
 }
 
 function findProject(id) { return state.projects.find(project => project.id === id); }
@@ -187,12 +187,12 @@ async function submitSupport(event) {
   if (!state.health?.payments_enabled) { error.textContent = state.health?.message || 'Le paiement est volontairement verrouillé. La version publique reste en mode démonstration.'; error.hidden = false; return; }
   const requestId = crypto.randomUUID();
   button.disabled = true;
-  button.querySelector('span').textContent = 'Création de la session sécurisée…';
+  button.querySelector('span').textContent = 'Ouverture de PayPal…';
   try {
     const payload = await api('/v1/checkout', { method: 'POST', headers: { 'Idempotency-Key': requestId }, body: JSON.stringify({ requestId, projectId: byId('supportProjectId').value, amountCents, anonymous, publicName: publicName || null, publicConsent, termsAccepted: true }) });
-    if (!payload.checkout_url || !safeHttpsCheckout(payload.checkout_url)) throw new Error('URL de paiement invalide.');
+    if (payload.provider !== 'paypal' || !payload.payment || !safePayPalAction(payload.payment.action_url)) throw new Error('Destination PayPal invalide.');
     track('checkout_start', byId('supportProjectId').value);
-    location.assign(payload.checkout_url);
+    submitPayPalForm(payload.payment);
   } catch (cause) {
     error.textContent = cause.message || 'Impossible de joindre le paiement sécurisé.'; error.hidden = false;
   } finally {
@@ -201,8 +201,28 @@ async function submitSupport(event) {
   }
 }
 
-function safeHttpsCheckout(value) {
-  try { const url = new URL(value); return url.protocol === 'https:' && (url.hostname.endsWith('.stripe.com') || url.hostname === 'checkout.stripe.com'); } catch { return false; }
+function safePayPalAction(value) {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' && ['www.paypal.com', 'www.sandbox.paypal.com'].includes(url.hostname) && url.pathname === '/cgi-bin/webscr';
+  } catch { return false; }
+}
+
+function submitPayPalForm(payment) {
+  if (payment.method !== 'POST' || !payment.fields || typeof payment.fields !== 'object' || !safePayPalAction(payment.action_url)) throw new Error('Formulaire PayPal invalide.');
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = payment.action_url;
+  form.hidden = true;
+  for (const [name, rawValue] of Object.entries(payment.fields)) {
+    const value = String(rawValue ?? '');
+    if (!/^[a-z0-9_]{1,40}$/i.test(name) || value.length > 1200) throw new Error('Paramètre PayPal invalide.');
+    const input = document.createElement('input');
+    input.type = 'hidden'; input.name = name; input.value = value;
+    form.append(input);
+  }
+  document.body.append(form);
+  form.submit();
 }
 
 async function loadHealth() {
@@ -235,14 +255,20 @@ async function loadRegistry() {
 async function handleReturnState() {
   const params = new URLSearchParams(location.search);
   if (params.get('payment') === 'cancelled') { toast('Paiement annulé : aucune contribution n’a été validée.', 6000); history.replaceState({}, '', location.pathname); return; }
-  const sessionId = params.get('session_id');
-  if (params.get('payment') !== 'success' || !/^cs_(test_|live_)?[A-Za-z0-9]+$/.test(sessionId || '')) return;
-  try {
-    const result = await api(`/v1/session-status?id=${encodeURIComponent(sessionId)}`);
-    if (result.status === 'paid') toast(`Merci ! Ta contribution de ${euro(result.amount_cents)} est confirmée.`, 8000);
-    else toast('Paiement reçu par le prestataire, confirmation serveur en cours…', 7000);
-    await loadStats();
-  } catch { toast('Retour de paiement reçu. La confirmation sécurisée peut prendre quelques instants.', 7000); }
+  const contributionId = params.get('contribution_id');
+  if (params.get('payment') !== 'success' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(contributionId || '')) return;
+  let result = null;
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try {
+      result = await api(`/v1/session-status?id=${encodeURIComponent(contributionId)}`);
+      if (result.status === 'paid' || result.status === 'failed') break;
+    } catch {}
+    if (attempt < 4) await new Promise(resolve => setTimeout(resolve, 1200));
+  }
+  if (result?.status === 'paid') toast(`Merci ! Ta contribution de ${euro(result.amount_cents)} est confirmée par PayPal.`, 8000);
+  else if (result?.status === 'failed') toast('PayPal a répondu, mais la vérification serveur a échoué : aucune contribution n’est comptée.', 8000);
+  else toast('Retour PayPal reçu. La contribution sera affichée seulement après confirmation serveur authentifiée.', 8000);
+  await loadStats();
   history.replaceState({}, '', location.pathname);
 }
 

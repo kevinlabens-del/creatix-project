@@ -30,11 +30,20 @@ test('la CSP refuse inline/eval et les ressources PWA déclarées existent', () 
     assert.doesNotMatch(html, /'unsafe-inline'|'unsafe-eval'/);
   }
   assert.match(read('styles.css'), /\[hidden\]\{display:none!important\}/);
-  assert.match(read('sw.js'), /cr3atix-soutien-v1\.0\.4/);
+  assert.match(read('sw.js'), /cr3atix-soutien-v1\.1\.0-paypal/);
   const manifest = JSON.parse(read('manifest.webmanifest'));
   assert.equal(manifest.start_url, './');
   for (const icon of manifest.icons) assert.ok(existsSync(`${root}${icon.src}`), `icône absente : ${icon.src}`);
   for (const shellPath of ['./index.html','./styles.css','./app.js','./projects.js','./config.js','./legal.html','./admin.html','./admin.css','./admin.js','./manifest.webmanifest','./assets/icon.svg','./assets/icon-192.png','./assets/icon-512.png']) {
     assert.ok(existsSync(`${root}${shellPath.slice(2)}`), `ressource de cache absente : ${shellPath}`);
   }
+});
+
+test('le frontend utilise uniquement le formulaire PayPal autorisé', () => {
+  const html = read('index.html'), script = read('app.js'), legal = read('legal.html');
+  assert.match(html, /form-action 'self' https:\/\/www\.paypal\.com https:\/\/www\.sandbox\.paypal\.com/);
+  assert.match(html, /Paiement traité par PayPal/);
+  assert.match(script, /www\.sandbox\.paypal\.com/);
+  assert.match(script, /contribution_id/);
+  assert.doesNotMatch(`${html}\n${script}\n${legal}`, /Stripe|checkout\.stripe\.com|session_id/);
 });
