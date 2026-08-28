@@ -1,4 +1,4 @@
-name: Deploy SOUTIEN Worker (payments disabled)
+name: Deploy SOUTIEN Worker
 
 on:
   workflow_dispatch:
@@ -12,11 +12,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: soutien-worker-disabled
+  group: soutien-worker
   cancel-in-progress: false
 
 jobs:
-  deploy-disabled:
+  deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -79,9 +79,41 @@ jobs:
       - name: Prepare protected deployment secrets
         env:
           CR3ATIX_ADMIN_PASSWORD: ${{ secrets.CR3ATIX_ADMIN_PASSWORD }}
+          PAYPAL_BUSINESS_ID: ${{ secrets.PAYPAL_BUSINESS_ID }}
+          PAYPAL_RECEIVER_ID: ${{ secrets.PAYPAL_RECEIVER_ID }}
+          PAYPAL_RECEIVER_EMAIL: ${{ secrets.PAYPAL_RECEIVER_EMAIL }}
+          SOUTIEN_PAYMENT_MODE: ${{ secrets.SOUTIEN_PAYMENT_MODE }}
+          ALLOW_LIVE_PAYMENTS: ${{ secrets.ALLOW_LIVE_PAYMENTS }}
         shell: bash
         run: |
           set -euo pipefail
+          REQUESTED_PAYMENT_MODE="${SOUTIEN_PAYMENT_MODE:-disabled}"
+          case "${REQUESTED_PAYMENT_MODE}" in
+            disabled|test|live) ;;
+            *) echo "::error::SOUTIEN_PAYMENT_MODE must be disabled, test or live"; exit 1 ;;
+          esac
+
+          if [ "${REQUESTED_PAYMENT_MODE}" != "disabled" ]; then
+            test -n "${PAYPAL_BUSINESS_ID:-}" || { echo "::error::Missing PAYPAL_BUSINESS_ID"; exit 1; }
+            if [ -z "${PAYPAL_RECEIVER_ID:-}" ] && [ -z "${PAYPAL_RECEIVER_EMAIL:-}" ]; then
+              echo "::error::PAYPAL_RECEIVER_ID or PAYPAL_RECEIVER_EMAIL is required"
+              exit 1
+            fi
+          fi
+          if [ "${REQUESTED_PAYMENT_MODE}" = "live" ] && [ "${ALLOW_LIVE_PAYMENTS:-}" != "yes" ]; then
+            echo "::error::Live mode requires ALLOW_LIVE_PAYMENTS=yes"
+            exit 1
+          fi
+
+          PAYMENT_MODE="${REQUESTED_PAYMENT_MODE}" node <<'NODE'
+          const fs = require('fs');
+          const path = 'wrangler.jsonc';
+          const config = JSON.parse(fs.readFileSync(path, 'utf8'));
+          config.vars.PAYMENT_MODE = process.env.PAYMENT_MODE;
+          fs.writeFileSync(path, JSON.stringify(config, null, 2) + '\n');
+          NODE
+          echo "DEPLOY_PAYMENT_MODE=${REQUESTED_PAYMENT_MODE}" >> "${GITHUB_ENV}"
+
           RATE_LIMIT_SALT="$(openssl rand -hex 32)"
           SESSION_SECRET="$(openssl rand -hex 32)"
           ADMIN_PASSWORD_PEPPER=""
@@ -99,6 +131,10 @@ jobs:
           SESSION_SECRET="${SESSION_SECRET}" \
           ADMIN_PASSWORD_PEPPER="${ADMIN_PASSWORD_PEPPER}" \
           ADMIN_PASSWORD_HASH="${ADMIN_PASSWORD_HASH}" \
+          PAYPAL_BUSINESS_ID="${PAYPAL_BUSINESS_ID:-}" \
+          PAYPAL_RECEIVER_ID="${PAYPAL_RECEIVER_ID:-}" \
+          PAYPAL_RECEIVER_EMAIL="${PAYPAL_RECEIVER_EMAIL:-}" \
+          ALLOW_LIVE_PAYMENTS="${ALLOW_LIVE_PAYMENTS:-}" \
           node <<'NODE'
           const fs = require('fs');
           const secrets = {
@@ -109,11 +145,14 @@ jobs:
             secrets.ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH;
             secrets.ADMIN_PASSWORD_PEPPER = process.env.ADMIN_PASSWORD_PEPPER;
           }
+          for (const name of ['PAYPAL_BUSINESS_ID', 'PAYPAL_RECEIVER_ID', 'PAYPAL_RECEIVER_EMAIL', 'ALLOW_LIVE_PAYMENTS']) {
+            if (process.env[name]) secrets[name] = process.env[name];
+          }
           fs.writeFileSync('deploy-secrets.json', JSON.stringify(secrets));
           NODE
 
-          unset RATE_LIMIT_SALT SESSION_SECRET ADMIN_PASSWORD_PEPPER ADMIN_PASSWORD_HASH CR3ATIX_ADMIN_PASSWORD
-      - name: Deploy locked Worker
+          unset RATE_LIMIT_SALT SESSION_SECRET ADMIN_PASSWORD_PEPPER ADMIN_PASSWORD_HASH CR3ATIX_ADMIN_PASSWORD PAYPAL_BUSINESS_ID PAYPAL_RECEIVER_ID PAYPAL_RECEIVER_EMAIL ALLOW_LIVE_PAYMENTS
+      - name: Deploy Worker
         id: deploy
         shell: bash
         run: |
@@ -125,7 +164,7 @@ jobs:
           test -n "${WORKER_URL}" || { echo "::error::Unable to determine Worker URL"; exit 1; }
           echo "worker_url=${WORKER_URL}" >> "${GITHUB_OUTPUT}"
 
-      - name: Smoke-test locked API
+      - name: Smoke-test API
         env:
           WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
           CR3ATIX_ADMIN_PASSWORD: ${{ secrets.CR3ATIX_ADMIN_PASSWORD }}
@@ -134,22 +173,25 @@ jobs:
           set -euo pipefail
           curl --fail --silent --show-error --retry 5 --retry-delay 2 "${WORKER_URL}/v1/health" --output health.json
           curl --fail --silent --show-error --retry 5 --retry-delay 2 "${WORKER_URL}/v1/projects" --output projects.json
-          WORKER_URL="${WORKER_URL}" node <<'NODE'
+          WORKER_URL="${WORKER_URL}" DEPLOY_PAYMENT_MODE="${DEPLOY_PAYMENT_MODE}" node <<'NODE'
           const fs = require('fs');
           const health = JSON.parse(fs.readFileSync('health.json', 'utf8'));
           const registry = JSON.parse(fs.readFileSync('projects.json', 'utf8'));
-          if (health.ok !== true || health.payments_enabled !== false || health.payment_mode !== 'disabled') {
-            throw new Error('The Worker is not safely locked');
+          const expectedMode = process.env.DEPLOY_PAYMENT_MODE;
+          const expectedEnabled = expectedMode !== 'disabled';
+          if (health.ok !== true || health.payment_provider !== 'paypal' || health.payments_enabled !== expectedEnabled || health.payment_mode !== expectedMode) {
+            throw new Error('The Worker payment mode does not match the protected deployment configuration');
           }
           if (!Array.isArray(registry.projects) || registry.projects.length === 0) {
             throw new Error('MAP registry is unavailable through the Worker');
           }
-          console.log('Locked health check passed; MAP projects:', registry.projects.length);
+          console.log('Health check passed; MAP projects:', registry.projects.length);
           fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
             '## CR3@TIX SOUTIEN Worker\n\n' +
             '- URL: ' + process.env.WORKER_URL + '\n' +
-            '- Payment mode: **disabled**\n' +
-            '- Payments enabled: **false**\n' +
+            '- Payment provider: **PayPal**\n' +
+            '- Payment mode: **' + expectedMode + '**\n' +
+            '- Payments enabled: **' + expectedEnabled + '**\n' +
             '- MAP projects returned: **' + registry.projects.length + '**\n');
           NODE
 
@@ -167,7 +209,7 @@ jobs:
               --header "Authorization: Bearer ${ADMIN_TOKEN}" \
               "${WORKER_URL}/v1/admin/dashboard?period=30" \
               --output admin-dashboard.json
-            node -e "const p=require('./admin-dashboard.json');if(p.payment_mode!=='disabled'||!p.summary||!Array.isArray(p.by_project)||!p.funnel)throw new Error('Administrator dashboard smoke test failed')"
+            DEPLOY_PAYMENT_MODE="${DEPLOY_PAYMENT_MODE}" node -e "const p=require('./admin-dashboard.json');if(p.payment_mode!==process.env.DEPLOY_PAYMENT_MODE||!p.summary||!Array.isArray(p.by_project)||!p.funnel)throw new Error('Administrator dashboard smoke test failed')"
             curl --fail-with-body --silent --show-error \
               --request POST \
               --header "Origin: https://kevinlabens-del.github.io" \
