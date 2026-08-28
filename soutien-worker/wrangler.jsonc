@@ -8,6 +8,7 @@
     "ENVIRONMENT": "production",
     "FRONTEND_ORIGIN": "https://kevinlabens-del.github.io",
     "FRONTEND_BASE_URL": "https://kevinlabens-del.github.io/creatix-project/soutien/",
+    "WORKER_BASE_URL": "https://cr3atix-soutien-api.creatixprojet.workers.dev",
     "MAP_API_URL": "https://gwqojqwcbwoulxrctaqz.supabase.co/functions/v1/cr3atix-admin",
     "PAYMENT_MODE": "disabled",
     "MIN_CONTRIBUTION_CENTS": "200",
