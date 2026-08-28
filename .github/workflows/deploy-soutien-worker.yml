@@ -114,6 +114,7 @@ jobs:
       - name: Smoke-test locked API
         env:
           WORKER_URL: ${{ steps.deploy.outputs.worker_url }}
+          CR3ATIX_ADMIN_PASSWORD: ${{ secrets.CR3ATIX_ADMIN_PASSWORD }}
         shell: bash
         run: |
           set -euo pipefail
@@ -137,4 +138,32 @@ jobs:
             '- Payments enabled: **false**\n' +
             '- MAP projects returned: **' + registry.projects.length + '**\n');
           NODE
+
+          if [ -n "${CR3ATIX_ADMIN_PASSWORD:-}" ]; then
+            node -e "const fs=require('fs');fs.writeFileSync('admin-login.json',JSON.stringify({password:process.env.CR3ATIX_ADMIN_PASSWORD}))"
+            curl --fail-with-body --silent --show-error --retry 3 --retry-delay 2 \
+              --request POST \
+              --header "Origin: https://kevinlabens-del.github.io" \
+              --header "Content-Type: application/json" \
+              --data-binary @admin-login.json \
+              "${WORKER_URL}/v1/admin/login" \
+              --output admin-session.json
+            ADMIN_TOKEN="$(node -e "const p=require('./admin-session.json');if(typeof p.token!=='string'||p.token.length<32)process.exit(2);process.stdout.write(p.token)")"
+            curl --fail-with-body --silent --show-error \
+              --header "Authorization: Bearer ${ADMIN_TOKEN}" \
+              "${WORKER_URL}/v1/admin/dashboard?period=30" \
+              --output admin-dashboard.json
+            node -e "const p=require('./admin-dashboard.json');if(p.payment_mode!=='disabled'||!p.summary||!Array.isArray(p.by_project)||!p.funnel)throw new Error('Administrator dashboard smoke test failed')"
+            curl --fail-with-body --silent --show-error \
+              --request POST \
+              --header "Origin: https://kevinlabens-del.github.io" \
+              --header "Authorization: Bearer ${ADMIN_TOKEN}" \
+              "${WORKER_URL}/v1/admin/logout" \
+              --output admin-logout.json
+            node -e "const p=require('./admin-logout.json');if(p.ok!==true)throw new Error('Administrator logout smoke test failed')"
+            echo "- Administrator login/dashboard/logout: **passed**" >> "${GITHUB_STEP_SUMMARY}"
+            rm -f admin-login.json admin-session.json admin-dashboard.json admin-logout.json
+            unset ADMIN_TOKEN CR3ATIX_ADMIN_PASSWORD
+          fi
+
           rm -f health.json projects.json deploy.log
