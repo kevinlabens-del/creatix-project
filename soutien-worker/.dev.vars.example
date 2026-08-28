@@ -1,10 +1,11 @@
 # Copie ce fichier en .dev.vars, puis remplace uniquement les valeurs locales.
-STRIPE_SECRET_KEY=sk_test_REPLACE_ME
-STRIPE_WEBHOOK_SECRET=whsec_REPLACE_ME
+PAYPAL_BUSINESS_ID=YOUR_SANDBOX_PAYER_ID
+PAYPAL_RECEIVER_ID=YOUR_SANDBOX_PAYER_ID
+# Alternative si le bouton Donate renvoie une adresse :
+# PAYPAL_RECEIVER_EMAIL=your-sandbox-address@example.test
 ADMIN_PASSWORD_PEPPER=REPLACE_WITH_64_HEXADECIMAL_CHARACTERS
 ADMIN_PASSWORD_HASH=hmac_sha256$REPLACE_WITH_43_BASE64URL_CHARACTERS
 SESSION_SECRET=replace-with-at-least-32-random-characters
 RATE_LIMIT_SALT=replace-with-another-random-secret
 TURNSTILE_SECRET_KEY=
 ALLOW_LIVE_PAYMENTS=no
-LEGAL_APPROVAL_ID=
