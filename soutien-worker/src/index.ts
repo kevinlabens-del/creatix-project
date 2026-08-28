@@ -1,13 +1,12 @@
-import type Stripe from 'stripe';
 import type { AppEnv } from './env';
 import { apiResponse, emptyResponse, errorResponse, HttpError, readBytesLimited, readJsonLimited, requestId, requireAllowedOrigin } from './http';
 import { createAdminSession, csvCell, deleteAdminSession, enforceRateLimit, isUuid, requireAdmin, sanitizePublicName, validateTurnstile, verifyPassword } from './security';
 import { fetchRegistry, resolveProject } from './registry';
-import { createStripeCheckout, paymentGate, verifyStripeEvent } from './payments';
+import { buildPayPalCheckout, parseMoneyCents, parsePayPalIpn, paymentGate, paypalEventIdentity, paypalReceiverMatches, verifyPayPalIpn } from './payments';
 
 type ContributionRow = {
   id: string; project_id: string; project_name_snapshot: string; amount_cents: number; refunded_cents: number; status: string;
-  checkout_session_id: string | null; checkout_url: string | null; payment_intent_id: string | null; is_anonymous: number;
+  provider_reference_id: string | null; provider_checkout_url: string | null; provider_transaction_id: string | null; is_anonymous: number;
   public_name: string | null; public_consent: number; created_at: string; updated_at: string; confirmed_at: string | null;
 };
 type GoalRow = { project_id: string; goal_cents: number; purpose: string; roadmap_json: string; active: number; updated_at: string };
@@ -16,7 +15,6 @@ function integer(value: unknown): number | null { const result = Number(value); 
 function projectId(value: unknown): string | null { return typeof value === 'string' && /^[A-Za-z0-9_.@-]{1,80}$/.test(value) ? value : null; }
 function nowIso(): string { return new Date().toISOString(); }
 function dateOnly(value = new Date()): string { return value.toISOString().slice(0, 10); }
-function paymentIntentId(value: string | Stripe.PaymentIntent | null): string | null { return typeof value === 'string' ? value : value?.id || null; }
 
 async function publicStats(request: Request, env: AppEnv): Promise<Response> {
   const [summary, contributions, goals, supporters] = await Promise.all([
@@ -44,9 +42,9 @@ function parseRoadmap(value: string): string[] { try { const parsed: unknown = J
 
 async function sessionStatus(request: Request, env: AppEnv, url: URL): Promise<Response> {
   const id = url.searchParams.get('id');
-  if (!id || !/^cs_(test_|live_)?[A-Za-z0-9]{8,255}$/.test(id)) throw new HttpError(400, 'invalid_session_id');
+  if (!isUuid(id)) throw new HttpError(400, 'invalid_contribution_id');
   await enforceRateLimit(request, env, 'session_status', 30);
-  const row = await env.DB.prepare('SELECT status,amount_cents,project_id,confirmed_at FROM contributions WHERE checkout_session_id=?').bind(id).first<{ status: string; amount_cents: number; project_id: string; confirmed_at: string | null }>();
+  const row = await env.DB.prepare('SELECT status,amount_cents,project_id,confirmed_at,provider_status FROM contributions WHERE id=?').bind(id).first<{ status: string; amount_cents: number; project_id: string; confirmed_at: string | null; provider_status: string | null }>();
   if (!row) throw new HttpError(404, 'session_not_found');
   return apiResponse(request, env, row);
 }
@@ -73,82 +71,122 @@ async function createCheckout(request: Request, env: AppEnv): Promise<Response> 
   if (!anonymous && (!publicName || !publicConsent)) throw new HttpError(400, 'public_consent_required');
   await validateTurnstile(request, env, body.turnstileToken, idempotencyKey);
 
-  const existing = await env.DB.prepare('SELECT id,status,checkout_url FROM contributions WHERE idempotency_key=?').bind(idempotencyKey).first<{ id: string; status: string; checkout_url: string | null }>();
+  const existing = await env.DB.prepare('SELECT id,status,project_id,project_name_snapshot,amount_cents FROM contributions WHERE idempotency_key=?').bind(idempotencyKey).first<{ id: string; status: string; project_id: string; project_name_snapshot: string; amount_cents: number }>();
   if (existing) {
-    if (existing.checkout_url && ['pending','paid'].includes(existing.status)) return apiResponse(request, env, { contribution_id: existing.id, checkout_url: existing.checkout_url, reused: true });
+    if (existing.status === 'pending') {
+      const checkout = buildPayPalCheckout(env, { contributionId: existing.id, projectId: existing.project_id, projectName: existing.project_name_snapshot, amountCents: existing.amount_cents });
+      return apiResponse(request, env, { contribution_id: existing.id, provider: 'paypal', payment: { method: 'POST', action_url: checkout.actionUrl, fields: checkout.fields }, reused: true });
+    }
     throw new HttpError(409, 'request_already_processed');
   }
 
   const project = await resolveProject(env, targetProjectId), contributionId = crypto.randomUUID(), createdAt = nowIso();
-  const inserted = await env.DB.prepare(`INSERT OR IGNORE INTO contributions(id,idempotency_key,project_id,project_name_snapshot,amount_cents,is_anonymous,public_name,public_consent,created_at,updated_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(contributionId, idempotencyKey, project.id, project.name, amountCents, anonymous ? 1 : 0, publicName, publicConsent ? 1 : 0, createdAt, createdAt).run();
+  const checkout = buildPayPalCheckout(env, { contributionId, projectId: project.id, projectName: project.name, amountCents });
+  const inserted = await env.DB.prepare(`INSERT OR IGNORE INTO contributions(id,idempotency_key,project_id,project_name_snapshot,amount_cents,is_anonymous,public_name,public_consent,created_at,updated_at,provider,provider_reference_id,provider_checkout_url,provider_status)
+    VALUES(?,?,?,?,?,?,?,?,?,?,'paypal',?,?,?)`).bind(contributionId, idempotencyKey, project.id, project.name, amountCents, anonymous ? 1 : 0, publicName, publicConsent ? 1 : 0, createdAt, createdAt, contributionId, checkout.actionUrl, 'created').run();
   if ((inserted.meta.changes || 0) !== 1) throw new HttpError(409, 'request_already_processed');
-  try {
-    const session = await createStripeCheckout(env, { contributionId, idempotencyKey, project, amountCents });
-    if (!session.url) throw new Error('missing_checkout_url');
-    await env.DB.prepare('UPDATE contributions SET checkout_session_id=?,checkout_url=?,provider_status=?,updated_at=? WHERE id=?').bind(session.id, session.url, session.status || 'open', nowIso(), contributionId).run();
-    return apiResponse(request, env, { contribution_id: contributionId, checkout_url: session.url, expires_at: session.expires_at }, 201);
-  } catch (error) {
-    await env.DB.prepare("UPDATE contributions SET status='failed',provider_status='session_creation_failed',failed_at=?,updated_at=? WHERE id=?").bind(nowIso(), nowIso(), contributionId).run();
-    console.error(JSON.stringify({ level: 'error', operation: 'stripe_session_create', contribution_id: contributionId, error: error instanceof Error ? error.name : 'unknown' }));
-    throw new HttpError(502, 'payment_provider_unavailable');
-  }
+  return apiResponse(request, env, { contribution_id: contributionId, provider: 'paypal', payment: { method: 'POST', action_url: checkout.actionUrl, fields: checkout.fields } }, 201);
 }
 
-async function beginWebhookEvent(env: AppEnv, event: Stripe.Event): Promise<boolean> {
+async function beginWebhookEvent(env: AppEnv, eventId: string, eventType: string): Promise<boolean> {
   const receivedAt = nowIso(), staleBefore = new Date(Date.now() - 5 * 60_000).toISOString();
   const claimed = await env.DB.prepare(`INSERT INTO webhook_events(event_id,event_type,processing_status,received_at) VALUES(?,?,'processing',?)
     ON CONFLICT(event_id) DO UPDATE SET processing_status='processing',received_at=excluded.received_at,processed_at=NULL
-    WHERE webhook_events.processing_status='processing' AND webhook_events.received_at<? RETURNING event_id`).bind(event.id, event.type, receivedAt, staleBefore).first<{ event_id: string }>();
+    WHERE webhook_events.processing_status='processing' AND webhook_events.received_at<? RETURNING event_id`).bind(eventId, eventType, receivedAt, staleBefore).first<{ event_id: string }>();
   return !!claimed;
 }
 async function finishWebhookEvent(env: AppEnv, eventId: string, status: 'processed' | 'rejected' = 'processed'): Promise<void> {
   await env.DB.prepare('UPDATE webhook_events SET processing_status=?,processed_at=? WHERE event_id=?').bind(status, nowIso(), eventId).run();
 }
 
-async function processCheckoutPaid(env: AppEnv, session: Stripe.Checkout.Session, eventId: string): Promise<void> {
-  const contributionId = session.metadata?.contribution_id || session.client_reference_id;
-  if (!contributionId || !isUuid(contributionId)) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
-  const row = await env.DB.prepare('SELECT id,amount_cents,currency,status,project_id FROM contributions WHERE id=? AND checkout_session_id=?').bind(contributionId, session.id).first<{ id: string; amount_cents: number; currency: string; status: string; project_id: string }>();
-  if (!row || session.amount_total !== row.amount_cents || session.currency !== row.currency || session.payment_status !== 'paid') {
-    if (row) await env.DB.prepare("UPDATE contributions SET status='failed',provider_status='verification_mismatch',failed_at=?,updated_at=? WHERE id=? AND status='pending'").bind(nowIso(), nowIso(), row.id).run();
+type PayPalContribution = {
+  id: string; amount_cents: number; currency: string; status: string; project_id: string;
+  provider_transaction_id: string | null; refunded_cents: number;
+};
+
+async function rejectPayPalContribution(env: AppEnv, eventId: string, contributionId?: string): Promise<void> {
+  if (contributionId && isUuid(contributionId)) {
+    await env.DB.prepare("UPDATE contributions SET status='failed',provider_status='verification_mismatch',failed_at=?,updated_at=? WHERE id=? AND status='pending'").bind(nowIso(), nowIso(), contributionId).run();
+  }
+  await finishWebhookEvent(env, eventId, 'rejected');
+}
+
+export async function processPayPalIpn(env: AppEnv, ipn: Record<string, string>, eventId: string): Promise<void> {
+  if (!paypalReceiverMatches(env, ipn)) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+  const status = (ipn.payment_status || '').toLowerCase();
+  const currency = (ipn.mc_currency || '').toLowerCase();
+  const amountCents = parseMoneyCents(ipn.mc_gross);
+
+  if (status === 'refunded' || status === 'reversed') {
+    const originalId = ipn.parent_txn_id;
+    if (!originalId || currency !== 'eur' || amountCents === null || amountCents >= 0) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+    const row = await env.DB.prepare('SELECT id,amount_cents,refunded_cents FROM contributions WHERE provider_transaction_id=? AND provider=?').bind(originalId, 'paypal').first<{ id: string; amount_cents: number; refunded_cents: number }>();
+    if (!row) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+    const refunded = Math.min(row.amount_cents, row.refunded_cents + Math.abs(amountCents));
+    await env.DB.prepare(`UPDATE contributions SET refunded_cents=?,status=?,provider_status=?,refunded_at=?,updated_at=? WHERE id=?`).bind(refunded, refunded >= row.amount_cents ? 'refunded' : 'partially_refunded', ipn.payment_status, nowIso(), nowIso(), row.id).run();
+    await finishWebhookEvent(env, eventId); return;
+  }
+
+  if (status === 'canceled_reversal') {
+    const originalId = ipn.parent_txn_id;
+    if (!originalId) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+    const restored = await env.DB.prepare("UPDATE contributions SET refunded_cents=0,status='paid',provider_status=?,refunded_at=NULL,updated_at=? WHERE provider_transaction_id=? AND provider='paypal' AND status IN ('refunded','partially_refunded')").bind(ipn.payment_status, nowIso(), originalId).run();
+    await finishWebhookEvent(env, eventId, (restored.meta.changes || 0) > 0 ? 'processed' : 'rejected'); return;
+  }
+
+  const contributionId = ipn.custom;
+  if (!isUuid(contributionId)) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+  const row = await env.DB.prepare("SELECT id,amount_cents,currency,status,project_id,provider_transaction_id,refunded_cents FROM contributions WHERE id=? AND provider='paypal'").bind(contributionId).first<PayPalContribution>();
+  if (!row) { await finishWebhookEvent(env, eventId, 'rejected'); return; }
+  const invariantMatch = ipn.invoice === `CR3ATIX-${row.id}` && ipn.item_number === row.project_id && currency === row.currency;
+  if (!invariantMatch) { await rejectPayPalContribution(env, eventId, row.id); return; }
+
+  if (status === 'completed') {
+    const transactionId = ipn.txn_id;
+    if (!transactionId || amountCents !== row.amount_cents) { await rejectPayPalContribution(env, eventId, row.id); return; }
+    if (row.status === 'paid') { await finishWebhookEvent(env, eventId, row.provider_transaction_id === transactionId ? 'processed' : 'rejected'); return; }
+    const updated = await env.DB.prepare(`UPDATE contributions SET status='paid',provider_status=?,provider_transaction_id=?,confirmed_at=COALESCE(confirmed_at,?),updated_at=? WHERE id=? AND status='pending' AND provider_transaction_id IS NULL`).bind(ipn.payment_status, transactionId, nowIso(), nowIso(), row.id).run();
+    if ((updated.meta.changes || 0) === 1) {
+      await env.DB.prepare(`INSERT INTO support_events(day,event_type,project_id,events) VALUES(?,'conversion',?,1)
+        ON CONFLICT(day,event_type,project_id) DO UPDATE SET events=events+1`).bind(dateOnly(), row.project_id).run();
+      await finishWebhookEvent(env, eventId); return;
+    }
     await finishWebhookEvent(env, eventId, 'rejected'); return;
   }
-  const updated = await env.DB.prepare(`UPDATE contributions SET status='paid',provider_status=?,payment_intent_id=?,confirmed_at=COALESCE(confirmed_at,?),updated_at=? WHERE id=? AND status='pending'`).bind(session.payment_status, paymentIntentId(session.payment_intent), nowIso(), nowIso(), row.id).run();
-  if ((updated.meta.changes || 0) === 1) await env.DB.prepare(`INSERT INTO support_events(day,event_type,project_id,events) VALUES(?,'conversion',?,1)
-    ON CONFLICT(day,event_type,project_id) DO UPDATE SET events=events+1`).bind(dateOnly(), row.project_id).run();
+
+  if (status === 'pending') {
+    await env.DB.prepare("UPDATE contributions SET provider_status=?,updated_at=? WHERE id=? AND status='pending'").bind(ipn.payment_status, nowIso(), row.id).run();
+    await finishWebhookEvent(env, eventId); return;
+  }
+
+  if (['denied','failed','expired','voided'].includes(status)) {
+    await env.DB.prepare("UPDATE contributions SET status='failed',provider_status=?,failed_at=?,updated_at=? WHERE id=? AND status='pending'").bind(ipn.payment_status, nowIso(), nowIso(), row.id).run();
+    await finishWebhookEvent(env, eventId); return;
+  }
+
   await finishWebhookEvent(env, eventId);
 }
 
-async function processStripeEvent(env: AppEnv, event: Stripe.Event): Promise<void> {
-  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
-    await processCheckoutPaid(env, event.data.object as Stripe.Checkout.Session, event.id); return;
+async function paypalWebhook(request: Request, env: AppEnv): Promise<Response> {
+  const declared = Number(request.headers.get('content-length') || 0);
+  if (declared > 65_536) throw new HttpError(413, 'payload_too_large');
+  const contentType = request.headers.get('content-type') || '';
+  if (!contentType.toLowerCase().startsWith('application/x-www-form-urlencoded')) throw new HttpError(415, 'invalid_webhook_content_type');
+  const payload = await readBytesLimited(request.body, 65_536);
+  const rawBody = new TextDecoder().decode(payload);
+  if (!rawBody) throw new HttpError(400, 'empty_webhook');
+  await verifyPayPalIpn(env, rawBody);
+  const ipn = parsePayPalIpn(rawBody);
+  const identity = paypalEventIdentity(ipn);
+  if (!identity) throw new HttpError(400, 'invalid_paypal_event');
+  if (!await beginWebhookEvent(env, identity.id, identity.type)) return apiResponse(request, env, { received: true, duplicate: true });
+  try {
+    await processPayPalIpn(env, ipn, identity.id);
+    return apiResponse(request, env, { received: true });
+  } catch (error) {
+    await env.DB.prepare('DELETE FROM webhook_events WHERE event_id=? AND processing_status=?').bind(identity.id, 'processing').run();
+    throw error;
   }
-  if (event.type === 'checkout.session.expired' || event.type === 'checkout.session.async_payment_failed') {
-    const session = event.data.object as Stripe.Checkout.Session;
-    await env.DB.prepare(`UPDATE contributions SET status=?,provider_status=?,failed_at=?,updated_at=? WHERE checkout_session_id=? AND status='pending'`).bind(event.type.endsWith('expired') ? 'cancelled' : 'failed', event.type, nowIso(), nowIso(), session.id).run();
-    await finishWebhookEvent(env, event.id); return;
-  }
-  if (event.type === 'payment_intent.payment_failed') {
-    const intent = event.data.object as Stripe.PaymentIntent;
-    await env.DB.prepare("UPDATE contributions SET status='failed',provider_status='payment_failed',failed_at=?,updated_at=? WHERE payment_intent_id=? AND status='pending'").bind(nowIso(), nowIso(), intent.id).run();
-    await finishWebhookEvent(env, event.id); return;
-  }
-  if (event.type === 'charge.refunded') {
-    const charge = event.data.object as Stripe.Charge, intentId = paymentIntentId(charge.payment_intent);
-    if (intentId) await env.DB.prepare(`UPDATE contributions SET refunded_cents=?,status=CASE WHEN ? >= amount_cents THEN 'refunded' ELSE 'partially_refunded' END,provider_status='refunded',refunded_at=?,updated_at=? WHERE payment_intent_id=? AND status IN ('paid','partially_refunded','refunded')`).bind(charge.amount_refunded, charge.amount_refunded, nowIso(), nowIso(), intentId).run();
-    await finishWebhookEvent(env, event.id); return;
-  }
-  await finishWebhookEvent(env, event.id);
-}
-
-async function stripeWebhook(request: Request, env: AppEnv): Promise<Response> {
-  const declared = Number(request.headers.get('content-length') || 0); if (declared > 524288) throw new HttpError(413, 'payload_too_large');
-  const signature = request.headers.get('stripe-signature'); if (!signature) throw new HttpError(400, 'missing_webhook_signature');
-  const payload = await readBytesLimited(request.body, 524288), event = await verifyStripeEvent(env, payload, signature);
-  if (!await beginWebhookEvent(env, event)) return apiResponse(request, env, { received: true, duplicate: true });
-  try { await processStripeEvent(env, event); return apiResponse(request, env, { received: true }); }
-  catch (error) { await env.DB.prepare('DELETE FROM webhook_events WHERE event_id=? AND processing_status=?').bind(event.id, 'processing').run(); throw error; }
 }
 
 async function adminLogin(request: Request, env: AppEnv): Promise<Response> {
@@ -197,7 +235,7 @@ async function adminTransactions(request: Request, env: AppEnv, url: URL): Promi
 
 async function adminExport(request: Request, env: AppEnv, url: URL): Promise<Response> {
   await requireAdmin(request, env); const { since } = periodSince(url.searchParams.get('period')), format = url.searchParams.get('format') === 'json' ? 'json' : 'csv';
-  const result = await env.DB.prepare(`SELECT id,project_id,project_name_snapshot,amount_cents,refunded_cents,currency,status,is_anonymous,public_name,public_consent,checkout_session_id,payment_intent_id,created_at,confirmed_at,refunded_at
+  const result = await env.DB.prepare(`SELECT id,project_id,project_name_snapshot,amount_cents,refunded_cents,currency,status,is_anonymous,public_name,public_consent,provider_reference_id,provider_transaction_id,created_at,confirmed_at,refunded_at
     FROM contributions WHERE created_at>=? ORDER BY created_at DESC LIMIT 5000`).bind(since).all<Record<string, unknown>>();
   const headers = { ...Object.fromEntries(new Headers({ 'cache-control': 'no-store', 'content-disposition': `attachment; filename="cr3atix-soutien-${dateOnly()}.${format}"`, 'x-content-type-options': 'nosniff' })), ...Object.fromEntries(new Headers({ 'access-control-allow-origin': env.FRONTEND_ORIGIN, vary: 'Origin' })) };
   if (format === 'json') return new Response(JSON.stringify({ exported_at: nowIso(), transactions: result.results }, null, 2), { headers: { ...headers, 'content-type': 'application/json; charset=utf-8' } });
@@ -220,13 +258,13 @@ async function adminGoals(request: Request, env: AppEnv): Promise<Response> {
 async function route(request: Request, env: AppEnv): Promise<Response> {
   const url = new URL(request.url), path = url.pathname.replace(/\/$/, '') || '/';
   if (request.method === 'OPTIONS') { requireAllowedOrigin(request, env); return emptyResponse(request, env); }
-  if (request.method === 'GET' && path === '/v1/health') { const gate = paymentGate(env); return apiResponse(request, env, { ok: true, payments_enabled: gate.enabled, payment_mode: gate.mode, message: gate.message, registry: 'CR3@TIX MAP', version: '1.0.0' }); }
+  if (request.method === 'GET' && path === '/v1/health') { const gate = paymentGate(env); return apiResponse(request, env, { ok: true, payments_enabled: gate.enabled, payment_mode: gate.mode, payment_provider: gate.provider, message: gate.message, registry: 'CR3@TIX MAP', version: '1.1.0' }); }
   if (request.method === 'GET' && path === '/v1/projects') { const projects = await fetchRegistry(env); return apiResponse(request, env, { projects, source: 'CR3@TIX MAP', fetched_at: nowIso() }, 200, { 'cache-control': 'public, max-age=30' }); }
   if (request.method === 'GET' && path === '/v1/stats') return publicStats(request, env);
   if (request.method === 'GET' && path === '/v1/session-status') return sessionStatus(request, env, url);
   if (request.method === 'POST' && path === '/v1/events') return recordClientEvent(request, env);
   if (request.method === 'POST' && path === '/v1/checkout') return createCheckout(request, env);
-  if (request.method === 'POST' && path === '/v1/webhooks/stripe') return stripeWebhook(request, env);
+  if (request.method === 'POST' && path === '/v1/webhooks/paypal') return paypalWebhook(request, env);
   if (request.method === 'POST' && path === '/v1/admin/login') return adminLogin(request, env);
   if (request.method === 'POST' && path === '/v1/admin/logout') { requireAllowedOrigin(request, env); const hash = await requireAdmin(request, env); await deleteAdminSession(env, hash); return apiResponse(request, env, { ok: true }); }
   if (request.method === 'GET' && path === '/v1/admin/dashboard') return adminDashboard(request, env, url);
@@ -262,5 +300,3 @@ export default {
   },
   async scheduled(_event: ScheduledController, env: AppEnv, ctx: ExecutionContext): Promise<void> { ctx.waitUntil(cleanup(env)); }
 } satisfies ExportedHandler<AppEnv>;
-
-export { processStripeEvent };
