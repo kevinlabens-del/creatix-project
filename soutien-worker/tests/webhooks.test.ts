@@ -1,13 +1,30 @@
 import { describe, expect, it } from 'vitest';
-import type Stripe from 'stripe';
 import type { AppEnv } from '../src/env';
-import { processStripeEvent } from '../src/index';
+import { processPayPalIpn } from '../src/index';
 
-type Row = { id: string; amount_cents: number; currency: string; status: string; project_id: string; checkout_session_id: string; payment_intent_id: string | null; refunded_cents: number };
+type Row = {
+  id: string;
+  amount_cents: number;
+  currency: string;
+  status: string;
+  project_id: string;
+  provider_transaction_id: string | null;
+  provider_status: string | null;
+  refunded_cents: number;
+};
 type RunResult = { meta: { changes: number } };
 
 class FakeDatabase {
-  row: Row = { id: '123e4567-e89b-42d3-a456-426614174000', amount_cents: 1000, currency: 'eur', status: 'pending', project_id: 'snake', checkout_session_id: 'cs_test_secure123', payment_intent_id: null, refunded_cents: 0 };
+  row: Row = {
+    id: '123e4567-e89b-42d3-a456-426614174000',
+    amount_cents: 1000,
+    currency: 'eur',
+    status: 'pending',
+    project_id: 'snake',
+    provider_transaction_id: null,
+    provider_status: null,
+    refunded_cents: 0
+  };
   conversions = 0;
   webhookStatus = '';
 
@@ -18,89 +35,145 @@ class FakeStatement {
   private values: unknown[] = [];
   constructor(private readonly database: FakeDatabase, private readonly sql: string) {}
   bind(...values: unknown[]): this { this.values = values; return this; }
+
   async first<T>(): Promise<T | null> {
-    if (!this.sql.includes('SELECT id,amount_cents,currency,status,project_id FROM contributions')) return null;
-    const [id, sessionId] = this.values;
-    return (id === this.database.row.id && sessionId === this.database.row.checkout_session_id ? { ...this.database.row } : null) as T | null;
+    if (this.sql.includes("FROM contributions WHERE id=? AND provider='paypal'")) {
+      return (this.values[0] === this.database.row.id ? { ...this.database.row } : null) as T | null;
+    }
+    if (this.sql.includes('FROM contributions WHERE provider_transaction_id=? AND provider=?')) {
+      return (this.values[0] === this.database.row.provider_transaction_id ? {
+        id: this.database.row.id,
+        amount_cents: this.database.row.amount_cents,
+        refunded_cents: this.database.row.refunded_cents
+      } : null) as T | null;
+    }
+    return null;
   }
+
   async run(): Promise<RunResult> {
-    if (this.sql.includes("SET status='paid'")) {
-      if (this.database.row.status !== 'pending') return { meta: { changes: 0 } };
+    if (this.sql.includes("SET status='paid',provider_status=?")) {
+      if (this.database.row.status !== 'pending' || this.database.row.provider_transaction_id !== null || this.values[4] !== this.database.row.id) return { meta: { changes: 0 } };
       this.database.row.status = 'paid';
-      this.database.row.payment_intent_id = String(this.values[1] || '') || null;
+      this.database.row.provider_status = String(this.values[0]);
+      this.database.row.provider_transaction_id = String(this.values[1]);
       return { meta: { changes: 1 } };
     }
-    if (this.sql.includes("provider_status='verification_mismatch'")) {
-      if (this.database.row.status === 'pending') { this.database.row.status = 'failed'; return { meta: { changes: 1 } }; }
-      return { meta: { changes: 0 } };
-    }
-    if (this.sql.includes('UPDATE contributions SET status=?,provider_status=?')) {
-      if (this.database.row.status === 'pending' && this.values[4] === this.database.row.checkout_session_id) { this.database.row.status = String(this.values[0]); return { meta: { changes: 1 } }; }
-      return { meta: { changes: 0 } };
-    }
-    if (this.sql.includes('refunded_cents=?,status=CASE')) {
-      if (this.values[4] === this.database.row.payment_intent_id) {
-        this.database.row.refunded_cents = Number(this.values[0]);
-        this.database.row.status = this.database.row.refunded_cents >= this.database.row.amount_cents ? 'refunded' : 'partially_refunded';
+    if (this.sql.includes("status='failed',provider_status='verification_mismatch'")) {
+      if (this.database.row.status === 'pending' && this.values[2] === this.database.row.id) {
+        this.database.row.status = 'failed';
+        this.database.row.provider_status = 'verification_mismatch';
         return { meta: { changes: 1 } };
       }
       return { meta: { changes: 0 } };
     }
-    if (this.sql.includes('INSERT INTO support_events')) { this.database.conversions += 1; return { meta: { changes: 1 } }; }
-    if (this.sql.includes('UPDATE webhook_events SET processing_status=')) { this.database.webhookStatus = String(this.values[0]); return { meta: { changes: 1 } }; }
+    if (this.sql.includes("SET provider_status=?,updated_at=? WHERE id=? AND status='pending'")) {
+      if (this.database.row.status === 'pending' && this.values[2] === this.database.row.id) {
+        this.database.row.provider_status = String(this.values[0]);
+        return { meta: { changes: 1 } };
+      }
+      return { meta: { changes: 0 } };
+    }
+    if (this.sql.includes("SET status='failed',provider_status=?")) {
+      if (this.database.row.status === 'pending' && this.values[3] === this.database.row.id) {
+        this.database.row.status = 'failed';
+        this.database.row.provider_status = String(this.values[0]);
+        return { meta: { changes: 1 } };
+      }
+      return { meta: { changes: 0 } };
+    }
+    if (this.sql.includes('SET refunded_cents=?,status=?,provider_status=?')) {
+      if (this.values[5] !== this.database.row.id) return { meta: { changes: 0 } };
+      this.database.row.refunded_cents = Number(this.values[0]);
+      this.database.row.status = String(this.values[1]);
+      this.database.row.provider_status = String(this.values[2]);
+      return { meta: { changes: 1 } };
+    }
+    if (this.sql.includes("SET refunded_cents=0,status='paid'")) {
+      if (this.values[2] !== this.database.row.provider_transaction_id || !['refunded', 'partially_refunded'].includes(this.database.row.status)) return { meta: { changes: 0 } };
+      this.database.row.refunded_cents = 0;
+      this.database.row.status = 'paid';
+      this.database.row.provider_status = String(this.values[0]);
+      return { meta: { changes: 1 } };
+    }
+    if (this.sql.includes('INSERT INTO support_events')) {
+      this.database.conversions += 1;
+      return { meta: { changes: 1 } };
+    }
+    if (this.sql.includes('UPDATE webhook_events SET processing_status=')) {
+      this.database.webhookStatus = String(this.values[0]);
+      return { meta: { changes: 1 } };
+    }
     return { meta: { changes: 0 } };
   }
 }
 
-function environment(database: FakeDatabase): AppEnv { return { DB: database } as unknown as AppEnv; }
-function checkoutEvent(database: FakeDatabase, overrides: Partial<Stripe.Checkout.Session> = {}, id = 'evt_checkout_1'): Stripe.Event {
-  const session = {
-    id: database.row.checkout_session_id,
-    amount_total: database.row.amount_cents,
-    currency: 'eur',
-    payment_status: 'paid',
-    payment_intent: 'pi_secure123',
-    client_reference_id: database.row.id,
-    metadata: { contribution_id: database.row.id, project_id: database.row.project_id },
-    ...overrides
-  } as Stripe.Checkout.Session;
-  return { id, type: 'checkout.session.completed', data: { object: session } } as unknown as Stripe.Event;
+function environment(database: FakeDatabase): AppEnv {
+  return { DB: database, PAYPAL_BUSINESS_ID: 'ABCDEF1234567', PAYPAL_RECEIVER_ID: 'ABCDEF1234567' } as unknown as AppEnv;
 }
 
-describe('authenticated webhook state transitions', () => {
-  it('confirms a matching session once and ignores a replay for conversion totals', async () => {
-    const database = new FakeDatabase(), event = checkoutEvent(database);
-    await processStripeEvent(environment(database), event);
+function completed(database: FakeDatabase, overrides: Record<string, string> = {}): Record<string, string> {
+  return {
+    receiver_id: 'ABCDEF1234567',
+    payment_status: 'Completed',
+    txn_id: 'PAYPALTXN001',
+    custom: database.row.id,
+    invoice: `CR3ATIX-${database.row.id}`,
+    item_number: database.row.project_id,
+    mc_gross: '10.00',
+    mc_currency: 'EUR',
+    ...overrides
+  };
+}
+
+describe('verified PayPal IPN state transitions', () => {
+  it('confirms a matching transaction once and does not count a replay twice', async () => {
+    const database = new FakeDatabase();
+    const ipn = completed(database);
+    await processPayPalIpn(environment(database), ipn, 'paypal:PAYPALTXN001:completed');
     expect(database.row.status).toBe('paid');
-    expect(database.row.payment_intent_id).toBe('pi_secure123');
+    expect(database.row.provider_transaction_id).toBe('PAYPALTXN001');
     expect(database.conversions).toBe(1);
-    await processStripeEvent(environment(database), event);
+    await processPayPalIpn(environment(database), ipn, 'paypal:PAYPALTXN001:completed');
     expect(database.conversions).toBe(1);
   });
 
-  it('rejects a manipulated amount instead of validating the contribution', async () => {
+  it('rejects a manipulated amount and never validates it', async () => {
     const database = new FakeDatabase();
-    await processStripeEvent(environment(database), checkoutEvent(database, { amount_total: 200 }));
+    await processPayPalIpn(environment(database), completed(database, { mc_gross: '2.00' }), 'paypal:PAYPALTXN002:completed');
     expect(database.row.status).toBe('failed');
     expect(database.webhookStatus).toBe('rejected');
     expect(database.conversions).toBe(0);
   });
 
-  it('marks an expired checkout as cancelled', async () => {
+  it('rejects a transaction addressed to another receiver', async () => {
     const database = new FakeDatabase();
-    const event = { id: 'evt_expired_1', type: 'checkout.session.expired', data: { object: { id: database.row.checkout_session_id } } } as unknown as Stripe.Event;
-    await processStripeEvent(environment(database), event);
-    expect(database.row.status).toBe('cancelled');
+    await processPayPalIpn(environment(database), completed(database, { receiver_id: 'ATTACKER123' }), 'paypal:PAYPALTXN003:completed');
+    expect(database.row.status).toBe('pending');
+    expect(database.webhookStatus).toBe('rejected');
   });
 
-  it('tracks full and partial refunds from the provider event', async () => {
+  it('accepts Pending first and only confirms after Completed', async () => {
     const database = new FakeDatabase();
-    await processStripeEvent(environment(database), checkoutEvent(database));
-    const partial = { id: 'evt_refund_1', type: 'charge.refunded', data: { object: { payment_intent: 'pi_secure123', amount_refunded: 400 } } } as unknown as Stripe.Event;
-    await processStripeEvent(environment(database), partial);
+    await processPayPalIpn(environment(database), completed(database, { payment_status: 'Pending' }), 'paypal:PAYPALTXN001:pending');
+    expect(database.row.status).toBe('pending');
+    expect(database.row.provider_status).toBe('Pending');
+    expect(database.conversions).toBe(0);
+    await processPayPalIpn(environment(database), completed(database), 'paypal:PAYPALTXN001:completed');
+    expect(database.row.status).toBe('paid');
+    expect(database.conversions).toBe(1);
+  });
+
+  it('tracks partial and full refunds from verified provider events', async () => {
+    const database = new FakeDatabase();
+    await processPayPalIpn(environment(database), completed(database), 'paypal:PAYPALTXN001:completed');
+    await processPayPalIpn(environment(database), completed(database, {
+      payment_status: 'Refunded', txn_id: 'REFUNDTXN001', parent_txn_id: 'PAYPALTXN001', mc_gross: '-4.00'
+    }), 'paypal:REFUNDTXN001:refunded');
     expect(database.row.status).toBe('partially_refunded');
-    const full = { id: 'evt_refund_2', type: 'charge.refunded', data: { object: { payment_intent: 'pi_secure123', amount_refunded: 1000 } } } as unknown as Stripe.Event;
-    await processStripeEvent(environment(database), full);
+    expect(database.row.refunded_cents).toBe(400);
+    await processPayPalIpn(environment(database), completed(database, {
+      payment_status: 'Refunded', txn_id: 'REFUNDTXN002', parent_txn_id: 'PAYPALTXN001', mc_gross: '-6.00'
+    }), 'paypal:REFUNDTXN002:refunded');
     expect(database.row.status).toBe('refunded');
     expect(database.row.refunded_cents).toBe(1000);
   });
