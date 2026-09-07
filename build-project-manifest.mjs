@@ -3,6 +3,33 @@ import vm from 'node:vm';
 
 const [appPath, outputPath] = process.argv.slice(2);
 const endpoint = 'https://gwqojqwcbwoulxrctaqz.supabase.co/functions/v1/cr3atix-admin';
+const SYSTEM_NODES = [
+  {
+    id: 'soutien',
+    parent: 'apps',
+    title: 'CR3@TIX SOUTIEN',
+    type: 'APPLICATION',
+    desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
+    url: 'https://kevinlabens-del.github.io/creatix-project/soutien/',
+    icon: 'https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg',
+    status: 'online',
+    progress: 100
+  },
+  {
+    id: 'ai-live',
+    parent: 'apps',
+    title: 'CR3@TIX AI LIVE',
+    type: 'APPLICATION',
+    desc: 'Conférences sur l’intelligence artificielle en direct, à venir et en replay dans un lecteur intégré',
+    url: 'https://creatix-ai-live.netlify.app/',
+    icon: 'https://creatix-ai-live.netlify.app/icons/icon.svg',
+    github: 'https://github.com/kevinlabens-del/creatix-ai-live',
+    status: 'online',
+    progress: 100,
+    version: '3.2.1',
+    addedAt: '2026-09-07'
+  }
+];
 if (!appPath || !outputPath) throw new Error('Usage: node build-project-manifest.mjs <app.js> <projects.json>');
 
 function extractNodes(payload) {
@@ -54,6 +81,12 @@ async function remoteNodes() {
 }
 
 function cleanText(value, maximum) { return typeof value === 'string' ? value.trim().slice(0, maximum) : ''; }
+function ensureSystemNodes(nodes) {
+  const next = Array.isArray(nodes) ? [...nodes] : [];
+  const ids = new Set(next.map(node => node?.id));
+  for (const node of SYSTEM_NODES) if (!ids.has(node.id)) next.push(node);
+  return next;
+}
 function normalize(nodes) {
   return nodes.flatMap(node => {
     if (!node || typeof node !== 'object' || Array.isArray(node)) return [];
@@ -87,6 +120,7 @@ try {
   nodes = vm.runInNewContext(defaultNodesExpression(appSource), Object.create(null), { timeout: 500 });
   source = 'cr3atix-map-default-nodes';
 }
+nodes = ensureSystemNodes(nodes);
 
 const manifest = {
   schema_version: 1,

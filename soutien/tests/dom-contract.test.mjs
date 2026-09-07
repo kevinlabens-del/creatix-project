@@ -47,3 +47,12 @@ test('le frontend utilise uniquement le formulaire PayPal autorisé', () => {
   assert.match(script, /contribution_id/);
   assert.doesNotMatch(`${html}\n${script}\n${legal}`, /Stripe|checkout\.stripe\.com|session_id/);
 });
+
+test('la carte conserve CR3@TIX AI LIVE dans ses projets système', () => {
+  const mapAdmin = read('../remote-admin.js');
+  assert.match(mapAdmin, /id:\s*'ai-live'/);
+  assert.match(mapAdmin, /parent:\s*'apps'/);
+  assert.match(mapAdmin, /title:\s*'CR3@TIX AI LIVE'/);
+  assert.match(mapAdmin, /url:\s*'https:\/\/creatix-ai-live\.netlify\.app\/'/);
+  assert.match(mapAdmin, /icon:\s*'https:\/\/creatix-ai-live\.netlify\.app\/icons\/icon\.svg'/);
+});

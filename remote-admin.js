@@ -11,19 +11,37 @@
   // Navigation système : le registre Supabase reste la source des projets.
   // La vignette est ajoutée si elle n'existe pas encore, puis sera incluse dans
   // la prochaine écriture MAP explicitement autorisée par le code administrateur.
-  const SYSTEM_NODES = [{
-    id: 'soutien',
-    parent: 'apps',
-    title: 'CR3@TIX SOUTIEN',
-    type: 'APPLICATION',
-    desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
-    x: 300,
-    y: 770,
-    url: 'https://kevinlabens-del.github.io/creatix-project/soutien/',
-    icon: 'https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg',
-    status: 'online',
-    progress: 100
-  }];
+  const SYSTEM_NODES = [
+    {
+      id: 'soutien',
+      parent: 'apps',
+      title: 'CR3@TIX SOUTIEN',
+      type: 'APPLICATION',
+      desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
+      x: 300,
+      y: 770,
+      url: 'https://kevinlabens-del.github.io/creatix-project/soutien/',
+      icon: 'https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg',
+      status: 'online',
+      progress: 100
+    },
+    {
+      id: 'ai-live',
+      parent: 'apps',
+      title: 'CR3@TIX AI LIVE',
+      type: 'APPLICATION',
+      desc: 'Conférences sur l’intelligence artificielle en direct, à venir et en replay dans un lecteur intégré',
+      x: 300,
+      y: 1050,
+      url: 'https://creatix-ai-live.netlify.app/',
+      icon: 'https://creatix-ai-live.netlify.app/icons/icon.svg',
+      github: 'https://github.com/kevinlabens-del/creatix-ai-live',
+      status: 'online',
+      progress: 100,
+      version: '3.2.1',
+      addedAt: '2026-09-07'
+    }
+  ];
 
   const cloneState = value => JSON.parse(JSON.stringify(value));
   const ensureSystemNodes = value => {
