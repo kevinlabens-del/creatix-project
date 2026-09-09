@@ -75,6 +75,7 @@ jobs:
 
           cp auto-layout.js _site/auto-layout.js
           cp remote-admin.js _site/remote-admin.js
+          cp remove-ai-live.js _site/remove-ai-live.js
           cp business-card.js _site/business-card.js
           cp fullscreen-landscape.js _site/fullscreen-landscape.js
           cp neon-cards.js _site/neon-cards.js
@@ -104,13 +105,13 @@ jobs:
           html = index.read_text(encoding='utf-8')
           html = html.replace('Toucher pour agrandir', '')
           html = re.sub(r'Glisser pour naviguer[^<]*', '', html)
-          # Hide helper/toast UI containers that can re-inject the expand hint at runtime.
           helper_css = '<style id="cr3atix-helper-cleanup">body>.hint,body>.helper,body>.instructions,body>.instruction,body>.toast,body>.zoom-hint,body>.expand-hint{display:none!important;visibility:hidden!important;opacity:0!important;pointer-events:none!important}</style>'
           if 'id="cr3atix-helper-cleanup"' not in html:
               html = html.replace('</head>', helper_css + '</head>', 1)
           target = '<script src="app.js"></script>'
           layout = '<script src="auto-layout.js"></script>'
           remote = '<script src="remote-admin.js?v=1.16.33"></script>'
+          remove_ai_live = '<script src="remove-ai-live.js?v=1.0.0"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
@@ -124,6 +125,7 @@ jobs:
 
           html = html.replace('<script src="admin-security.js"></script>', '')
           html = html.replace('<script src="remote-admin.js"></script>', remote)
+          html = re.sub(r'<script src="remove-ai-live\.js(?:\?v=[^"]+)?"></script>', '', html)
           html = re.sub(r'<script src="business-card\.js(?:\?v=[^"]+)?"></script>', card, html)
           html = re.sub(r'<script src="fullscreen-landscape\.js(?:\?v=[^"]+)?"></script>', fullscreen, html)
           html = re.sub(r'<script src="neon-cards\.js(?:\?v=[^"]+)?"></script>', neon, html)
@@ -138,7 +140,8 @@ jobs:
               html = html.replace(target, energy + target, 1)
           if layout not in html: html = html.replace(target, target + layout, 1)
           if remote not in html: html = html.replace(layout, layout + remote, 1)
-          if card not in html: html = html.replace(remote, remote + card, 1)
+          if remove_ai_live not in html: html = html.replace(remote, remote + remove_ai_live, 1)
+          if card not in html: html = html.replace(remove_ai_live, remove_ai_live + card, 1)
           if fullscreen not in html: html = html.replace(card, card + fullscreen, 1)
           if neon not in html: html = html.replace(fullscreen, fullscreen + neon, 1)
           if nyxel_scripts not in html: html = html.replace('</body>', nyxel_scripts + '</body>', 1)
@@ -149,13 +152,14 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.33-ai-live", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.34-no-ai-live", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
               if "'./remote-admin.js'" not in text: text = text.replace("'./auto-layout.js'", "'./auto-layout.js','./remote-admin.js'")
+              if "'./remove-ai-live.js'" not in text: text = text.replace("'./remote-admin.js'", "'./remote-admin.js','./remove-ai-live.js'")
               text = text.replace("'./business-card.jpg'", "'./business-card-v2.jpg'")
-              if "'./business-card.js'" not in text: text = text.replace("'./remote-admin.js'", "'./remote-admin.js','./business-card.js','./business-card-v2.jpg'")
+              if "'./business-card.js'" not in text: text = text.replace("'./remove-ai-live.js'", "'./remove-ai-live.js','./business-card.js','./business-card-v2.jpg'")
               elif "'./business-card-v2.jpg'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
               if "'./fullscreen-landscape.js'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
               if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
@@ -200,19 +204,20 @@ jobs:
           node --check soutien/admin.js
           node --check soutien/projects.js
           node --check soutien/sw.js
+          node --check remove-ai-live.js
           node build-project-manifest.mjs _site/app.js _site/projects.json
           test -f _site/nyxel-widget/assets/nyxel-idle.png
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
+          grep -q 'remove-ai-live.js?v=1.0.0' _site/index.html
           grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
+          grep -q 'remove-ai-live.js' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           grep -q 'static.cloudflareinsights.com/beacon.min.js' _site/index.html
           test -f _site/soutien/index.html
           test -f _site/soutien/assets/icon-192.png
           test -f _site/soutien/assets/icon-512.png
           grep -q 'CR3@TIX SOUTIEN' _site/remote-admin.js
-          grep -q 'CR3@TIX AI LIVE' _site/remote-admin.js
-          grep -q 'CR3@TIX AI LIVE' _site/projects.json
           python3 -m json.tool _site/projects.json >/dev/null
           touch _site/.nojekyll
 
