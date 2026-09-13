@@ -10,26 +10,14 @@ const SYSTEM_NODES = [
     title: 'CR3@TIX SOUTIEN',
     type: 'APPLICATION',
     desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
-    url: 'https://kevinlabens-del.github.io/creatix-project/soutien/',
+    url: 'https://kevinlabens-del.github.io/CR3-TIX-SOUTIEN-/',
     icon: 'https://kevinlabens-del.github.io/creatix-project/soutien/assets/icon.svg',
     status: 'online',
     progress: 100
-  },
-  {
-    id: 'ai-live',
-    parent: 'apps',
-    title: 'CR3@TIX AI LIVE',
-    type: 'APPLICATION',
-    desc: 'Conférences sur l’intelligence artificielle en direct, à venir et en replay dans un lecteur intégré',
-    url: 'https://creatix-ai-live.netlify.app/',
-    icon: 'https://creatix-ai-live.netlify.app/icons/icon.svg',
-    github: 'https://github.com/kevinlabens-del/creatix-ai-live',
-    status: 'online',
-    progress: 100,
-    version: '3.2.1',
-    addedAt: '2026-09-07'
   }
 ];
+const PUBLIC_SUPPORT_EXCLUDED_IDS = new Set(['soutien', 'ai-live', 'breizh']);
+const PUBLIC_SUPPORT_EXCLUDED_TYPES = new Set(['BRANCHE', 'ECOSYSTEME']);
 if (!appPath || !outputPath) throw new Error('Usage: node build-project-manifest.mjs <app.js> <projects.json>');
 
 function extractNodes(payload) {
@@ -83,8 +71,11 @@ async function remoteNodes() {
 function cleanText(value, maximum) { return typeof value === 'string' ? value.trim().slice(0, maximum) : ''; }
 function ensureSystemNodes(nodes) {
   const next = Array.isArray(nodes) ? [...nodes] : [];
-  const ids = new Set(next.map(node => node?.id));
-  for (const node of SYSTEM_NODES) if (!ids.has(node.id)) next.push(node);
+  for (const systemNode of SYSTEM_NODES) {
+    const index = next.findIndex(node => node?.id === systemNode.id);
+    if (index >= 0) next[index] = { ...next[index], ...systemNode };
+    else next.push(systemNode);
+  }
   return next;
 }
 function normalize(nodes) {
@@ -92,12 +83,14 @@ function normalize(nodes) {
     if (!node || typeof node !== 'object' || Array.isArray(node)) return [];
     const id = cleanText(node.id || node.source_node_id, 80);
     const title = cleanText(node.title || node.name, 120);
-    if (!id || !title) return [];
+    const type = cleanText(node.type || node.category, 60);
+    const normalizedType = type.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+    if (!id || !title || PUBLIC_SUPPORT_EXCLUDED_IDS.has(id) || PUBLIC_SUPPORT_EXCLUDED_TYPES.has(normalizedType)) return [];
     return [{
       id,
       parent: cleanText(node.parent, 80) || null,
       title,
-      type: cleanText(node.type || node.category, 60),
+      type,
       desc: cleanText(node.desc || node.description, 600),
       url: cleanText(node.url, 2048),
       icon: cleanText(node.icon || node.image, 2048),
@@ -123,11 +116,12 @@ try {
 nodes = ensureSystemNodes(nodes);
 
 const manifest = {
-  schema_version: 1,
+  schema_version: 2,
+  purpose: 'public-support-projects',
   source,
   generated_at: new Date().toISOString(),
   nodes: normalize(nodes)
 };
 if (!manifest.nodes.length) throw new Error('Le manifeste généré serait vide');
 await writeFile(outputPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
-console.log(`Manifeste MAP généré : ${manifest.nodes.length} nœuds (${source}).`);
+console.log(`Manifeste public SOUTIEN généré : ${manifest.nodes.length} nœuds (${source}).`);
