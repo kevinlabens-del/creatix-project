@@ -11,3 +11,6 @@ Le bouton ❤ Soutenir de MAP doit rester dans la topbar, dans la zone top-actio
 
 
 Une MAP déjà ouverte peut rester sur l’ancien DOM même si GitHub Pages contient la nouvelle version. L’auto-update doit vérifier le service worker au chargement, au focus, sur `pageshow`, au retour en ligne/visible et périodiquement. Conserver `updateViaCache:'none'` et recharger sur `controllerchange`.
+
+
+Ne jamais repositionner le plein écran en `fixed` au-dessus de la topbar : il peut recouvrir le bouton Soutien. Tous les contrôles d’en-tête doivent partager `.top-actions`. Sous 430 px, réduire l’encombrement de la marque avant de masquer une commande interactive.

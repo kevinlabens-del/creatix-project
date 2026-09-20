@@ -122,7 +122,7 @@ jobs:
           remote = '<script src="remote-admin.js?v=1.16.38"></script>'
           remove_ai_live = '<script src="remove-ai-live.js?v=1.0.0"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
-          fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
+          fullscreen = '<script src="fullscreen-landscape.js?v=1.16.41"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
           cosmic_css = '<link rel="stylesheet" href="cosmic-background.css">'
           energy = '<script src="energy-transfer.js"></script>'
@@ -130,7 +130,7 @@ jobs:
           nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.4.0">'
           nyxel_map_css = '<link rel="stylesheet" href="nyxel-map.css?v=1.0.0">'
           nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.4.0"></script><script src="nyxel-widget/nyxel.js?v=1.4.0"></script>'
-          support_button = '<script src="support-button.js?v=1.16.39"></script>'
+          support_button = '<script src="support-button.js?v=1.16.41"></script>'
           cloudflare_analytics = '<!-- Cloudflare Web Analytics --><script type=\'module\' src=\'https://static.cloudflareinsights.com/beacon.min.js\' data-cf-beacon=\'{"token": "28610ff3afd94bafa29a51254334921c"}\'></script><!-- End Cloudflare Web Analytics -->'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
@@ -164,7 +164,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.40-fast-update", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.41-topbar-controls", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -178,7 +178,7 @@ jobs:
               if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
               if "'./energy-transfer.js'" not in text: text = text.replace("'./app.js'", "'./energy-transfer.js','./app.js'")
               if "'./projects.json'" not in text: text = text.replace("'./app.js'", "'./projects.json','./app.js'")
-              support_core = ['./support-button.js', './support-button.js?v=1.16.39']
+              support_core = ['./support-button.js', './support-button.js?v=1.16.41']
               if "'./support-button.js'" not in text:
                   core_end = "];self.addEventListener('install'"
                   if core_end not in text:
@@ -231,11 +231,12 @@ jobs:
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
           grep -q 'remove-ai-live.js?v=1.0.0' _site/index.html
-          grep -q 'support-button.js?v=1.16.39' _site/index.html
+          grep -q 'support-button.js?v=1.16.41' _site/index.html
+          grep -q 'fullscreen-landscape.js?v=1.16.41' _site/index.html
           test -f _site/support-button.js
           grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
           grep -q 'remove-ai-live.js' _site/sw.js
-          grep -q 'support-button.js?v=1.16.39' _site/sw.js
+          grep -q 'support-button.js?v=1.16.41' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           grep -q 'static.cloudflareinsights.com/beacon.min.js' _site/index.html
           test -f _site/soutien/index.html

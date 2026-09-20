@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.40-fast-update'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.41-topbar-controls'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
@@ -52,13 +52,13 @@ test('support button lives in the top bar and stays away from NYXEL', () => {
   const button = read('_site/support-button.js');
   const sw = read('_site/sw.js');
   const nyxel = read('_site/nyxel-map.css');
-  assert.ok(html.includes('support-button.js?v=1.16.39'));
+  assert.ok(html.includes('support-button.js?v=1.16.41'));
   assert.ok(button.includes("document.querySelector('.top-actions')"));
   assert.ok(button.includes("actions.insertBefore(host, actions.firstChild)"));
   assert.ok(button.includes('.label { display: none; }'));
   assert.ok(!button.includes('bottom: max(12px'));
   assert.ok(button.includes("https://kevinlabens-del.github.io/CR3-TIX-SOUTIEN-/"));
-  assert.ok(sw.includes("'./support-button.js?v=1.16.39'"));
+  assert.ok(sw.includes("'./support-button.js?v=1.16.41'"));
   assert.match(nyxel, /bottom:\s*max\(/);
 });
 
@@ -69,4 +69,16 @@ test('auto update checks focus and pageshow so stale clients refresh quickly', (
   assert.ok(updater.includes("addEventListener('pageshow', update)"));
   assert.ok(updater.includes("updateViaCache: 'none'"));
   assert.ok(updater.includes("2 * 60 * 1000"));
+});
+
+
+test('fullscreen control shares top-actions so it cannot cover Soutien', () => {
+  const fullscreen = read('_site/fullscreen-landscape.js');
+  const html = read('_site/index.html');
+  assert.ok(fullscreen.includes("document.querySelector('.top-actions')"));
+  assert.ok(fullscreen.includes("actions.insertBefore(btn, actions.firstChild)"));
+  assert.ok(fullscreen.includes('position:static'));
+  assert.ok(!fullscreen.includes('right:101px'));
+  assert.ok(fullscreen.includes('.brand span:last-child{display:none}'));
+  assert.ok(html.includes('fullscreen-landscape.js?v=1.16.41'));
 });

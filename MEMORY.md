@@ -14,3 +14,6 @@ Version 1.16.36 : limite de dézoom abaissée de 22 % à 5 % pour recentrage, bo
 
 
 2026-09-20 — v1.16.40 : auto-update vérifié au focus, pageshow, online, retour visible et toutes les 2 minutes afin que les clients déjà ouverts récupèrent rapidement les nouveaux déploiements.
+
+
+2026-09-20 — v1.16.41 : tous les contrôles du haut partagent `top-actions`. Le plein écran ne flotte plus au-dessus du bouton Soutien. Sous 430 px, `PROJECT MAP` est masqué pour préserver les quatre commandes.

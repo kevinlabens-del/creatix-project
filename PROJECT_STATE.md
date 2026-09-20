@@ -1,5 +1,5 @@
 # État du projet
-Version du correctif : 1.16.40 (20 septembre 2026).
+Version du correctif : 1.16.41 (20 septembre 2026).
 Correctif : suppression du contexte preserve-3d et des hints de masquage/promotion GPU forcés ; ordre explicite liaisons, cartes, boutons.
 Publication : workflow GitHub Pages sur push main, avec tests Soutien obligatoires.
 Limite : navigateur de vérification distant ; pas d'accès au GPU du téléphone ayant produit les captures.
@@ -15,3 +15,6 @@ SOUTIEN : vignette déplacée au-dessus du nœud central ; emplacement retiré d
 
 
 2026-09-20 — v1.16.40 — auto-update renforcé : vérification du service worker au chargement, au focus, au retour `pageshow`, au retour en ligne, au retour visible et toutes les 2 minutes si l’application reste ouverte. Objectif : éviter qu’une ancienne interface reste affichée après un déploiement réussi.
+
+
+2026-09-20 — v1.16.41 — topbar sans chevauchement : le bouton plein écran n’est plus `fixed` au-dessus des autres contrôles ; il rejoint `.top-actions`. Ordre mobile final : ❤ Soutien, plein écran, Centrer, Rechercher. Sous 430 px CSS, le libellé `PROJECT MAP` est masqué afin de réserver l’espace nécessaire aux quatre commandes.

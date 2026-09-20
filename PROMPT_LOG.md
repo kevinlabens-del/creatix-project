@@ -13,3 +13,6 @@ Périmètre : rendu de la carte et renouvellement du cache de l'application ; co
 
 
 2026-09-20 — Kev signale ne pas voir le nouveau bouton malgré un déploiement réussi. Vérification de l’artefact Pages : bouton et cache v1.16.39 bien présents ; la capture correspond à un client déjà ouvert sur l’ancien DOM. Action : v1.16.40, auto-update renforcé au focus/pageshow/online/visible et toutes les 2 minutes.
+
+
+2026-09-20 — Nouvelle capture mobile : le bouton Soutien reste invisible. Diagnostic sur l’artefact publié : le bouton plein écran était `position:fixed; right:101px`, exactement au-dessus de la place du cœur Soutien injecté dans `.top-actions`. Correction v1.16.41 : plein écran déplacé dans `.top-actions`, libellé PROJECT MAP masqué sous 430 px pour garantir quatre commandes visibles.
