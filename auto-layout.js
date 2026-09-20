@@ -26,7 +26,7 @@
     // Each branch receives a vertical block sized to its number of projects.
     // Empty branches still keep one card-height of breathing room.
     const groups = branches.map(branch => {
-      const projects = childrenOf(branch.id);
+      const projects = childrenOf(branch.id).filter(project => project.id !== 'soutien');
       const span = Math.max(PROJECT_STEP, projects.length * PROJECT_STEP);
       return { branch, projects, span };
     });
@@ -72,6 +72,15 @@
     if (root.x !== ROOT_X || root.y !== rootY) {
       root.x = ROOT_X;
       root.y = rootY;
+      changed = true;
+    }
+
+    // Keep the support card aligned above the central CR3@TIX card.
+    // Apply after every render, including refreshes of the remote registry.
+    const support = nodeById('soutien');
+    if (support && (support.x !== root.x || support.y !== root.y - 370)) {
+      support.x = root.x;
+      support.y = root.y - 370;
       changed = true;
     }
 
