@@ -5,18 +5,3 @@ Les couches transparentes plein écran ne doivent pas bloquer les cartes : point
 À chaque correction du rendu, incrémenter la version du cache généré dans le workflow.
 
 Garder la même limite minimale pour fit(), zoomAt() et le pincement ; vérifier le cadrage sur un viewport de 360 px avec des projets à coordonnées négatives.
-
-
-Le bouton ❤ Soutenir de MAP doit rester dans la topbar, dans la zone top-actions, et non en bas de l’écran : NYXEL et les commandes de zoom occupent déjà la zone basse droite. Sur mobile, le libellé « Soutenir » doit rester visible. Si l’espace manque, utiliser une topbar en deux lignes plutôt que masquer `PROJECT MAP` ou le texte du bouton Soutien. Vérifier que le script est copié/injecté par le workflow ZIP et présent dans le cache PWA.
-
-
-Une MAP déjà ouverte peut rester sur l’ancien DOM même si GitHub Pages contient la nouvelle version. L’auto-update doit vérifier le service worker au chargement, au focus, sur `pageshow`, au retour en ligne/visible et périodiquement. Conserver `updateViaCache:'none'` et recharger sur `controllerchange`.
-
-
-Ne jamais repositionner le plein écran en `fixed` au-dessus de la topbar : il peut recouvrir le bouton Soutien. Tous les contrôles d’en-tête doivent partager `.top-actions`. Sous 430 px, réduire l’encombrement de la marque avant de masquer une commande interactive.
-
-
-Les boutons Plein écran et Recherche ont été retirés de la topbar publique v1.16.42 car ils n’apportent pas assez de valeur sur mobile. Ne pas les réintroduire sans demande explicite. Le nom `CR3@TIX PROJECT MAP` doit toujours rester visible en entier.
-
-
-Ne jamais changer la hauteur ou le mode de layout de `.topbar` pour ajouter une commande : cela peut modifier le viewport et casser le cadrage de la MAP. Toute nouvelle action doit s’intégrer dans la topbar originale sans grid, sans seconde ligne et sans modifier sa hauteur. Si l’espace manque, supprimer une commande secondaire plutôt que modifier la géométrie du viewport.

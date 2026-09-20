@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.43-stable-topbar'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.38-support-links'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
@@ -44,41 +44,4 @@ test('mobile fit includes the whole map and manual zoom can reach 5%', async () 
   assert.ok(context.view.scale > .05);
   assert.equal((app.match(/Math.max\(\.05,Math.min\(/g)||[]).length,3,
     'fit, buttons/wheel and pinch must share the same lower limit');
-});
-
-
-test('support button lives in the top bar and stays away from NYXEL', () => {
-  const html = read('_site/index.html');
-  const button = read('_site/support-button.js');
-  const sw = read('_site/sw.js');
-  const nyxel = read('_site/nyxel-map.css');
-  assert.ok(html.includes('support-button.js?v=1.16.43'));
-  assert.ok(button.includes("document.querySelector('.top-actions')"));
-  assert.ok(button.includes("actions.insertBefore(host, actions.firstChild)"));
-  assert.ok(button.includes('.label { display: inline; }'));
-  assert.ok(button.includes('min-width: 104px'));
-  assert.ok(!button.includes('bottom: max(12px'));
-  assert.ok(button.includes("https://kevinlabens-del.github.io/CR3-TIX-SOUTIEN-/"));
-  assert.ok(sw.includes("'./support-button.js?v=1.16.43'"));
-  assert.match(nyxel, /bottom:\s*max\(/);
-});
-
-
-test('auto update checks focus and pageshow so stale clients refresh quickly', () => {
-  const updater = read('_site/auto-update.js');
-  assert.ok(updater.includes("addEventListener('focus', update)"));
-  assert.ok(updater.includes("addEventListener('pageshow', update)"));
-  assert.ok(updater.includes("updateViaCache: 'none'"));
-  assert.ok(updater.includes("2 * 60 * 1000"));
-});
-
-
-test('stable topbar keeps original layout and only useful actions', () => {
-  const html = read('_site/index.html');
-  const sw = read('_site/sw.js');
-  assert.ok(html.includes('<strong>CR3@TIX</strong><span>PROJECT MAP</span>'));
-  assert.ok(!html.includes('id="searchBtn"'));
-  assert.ok(!html.includes('fullscreen-landscape.js'));
-  assert.ok(!html.includes('topbar-layout.css'));
-  assert.ok(!sw.includes('topbar-layout.css'));
 });

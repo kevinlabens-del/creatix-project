@@ -8,8 +8,10 @@
     const style = document.createElement('style');
     style.textContent = `
       #cr3-fullscreen-landscape{
-        position:static;
-        z-index:auto;
+        position:fixed;
+        top:max(8px,env(safe-area-inset-top));
+        right:101px;
+        z-index:100000;
         width:36px;
         height:36px;
         min-width:36px;
@@ -39,11 +41,8 @@
         opacity:0;pointer-events:none;transition:opacity .2s ease
       }
       #cr3-fullscreen-toast.show{opacity:1}
-      @media (max-width:430px){
-        .topbar{padding-left:10px;padding-right:10px}
-        .top-actions{gap:5px}
-        .brand{gap:6px;min-width:0}
-        .brand span:last-child{display:none}
+      @media (min-width:721px){
+        #cr3-fullscreen-landscape{top:10px;right:146px;width:36px;height:36px;min-width:36px;min-height:36px;border-radius:12px}
       }
     `;
     document.head.appendChild(style);
@@ -54,9 +53,7 @@
     btn.setAttribute('aria-label','Plein écran paysage');
     btn.setAttribute('title','Plein écran paysage');
     btn.textContent = '⛶';
-    const actions = document.querySelector('.top-actions');
-    if (actions) actions.insertBefore(btn, actions.firstChild);
-    else document.body.appendChild(btn);
+    document.body.appendChild(btn);
 
     const toast = document.createElement('div');
     toast.id = 'cr3-fullscreen-toast';
