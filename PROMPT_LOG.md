@@ -10,3 +10,6 @@ Périmètre : rendu de la carte et renouvellement du cache de l'application ; co
 
 
 2026-09-20 — Kev demande d’ajouter le bouton CR3@TIX Soutien à CR3@TIX Project en évitant toute interférence avec NYXEL. Choix : intégration dans la barre supérieure top-actions, avant Centrer/Rechercher ; libellé complet sur écran large, cœur seul sur mobile. Ajout au pipeline ZIP, au cache PWA et aux tests de rendu.
+
+
+2026-09-20 — Kev signale ne pas voir le nouveau bouton malgré un déploiement réussi. Vérification de l’artefact Pages : bouton et cache v1.16.39 bien présents ; la capture correspond à un client déjà ouvert sur l’ancien DOM. Action : v1.16.40, auto-update renforcé au focus/pageshow/online/visible et toutes les 2 minutes.

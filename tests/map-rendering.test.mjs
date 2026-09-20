@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.39-support-topbar'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.40-fast-update'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
@@ -60,4 +60,13 @@ test('support button lives in the top bar and stays away from NYXEL', () => {
   assert.ok(button.includes("https://kevinlabens-del.github.io/CR3-TIX-SOUTIEN-/"));
   assert.ok(sw.includes("'./support-button.js?v=1.16.39'"));
   assert.match(nyxel, /bottom:\s*max\(/);
+});
+
+
+test('auto update checks focus and pageshow so stale clients refresh quickly', () => {
+  const updater = read('_site/auto-update.js');
+  assert.ok(updater.includes("addEventListener('focus', update)"));
+  assert.ok(updater.includes("addEventListener('pageshow', update)"));
+  assert.ok(updater.includes("updateViaCache: 'none'"));
+  assert.ok(updater.includes("2 * 60 * 1000"));
 });
