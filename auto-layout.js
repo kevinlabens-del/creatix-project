@@ -20,7 +20,12 @@
     const root = nodeById('root');
     if (!root) return false;
 
-    const branches = childrenOf(root.id);
+    // SOUTIEN is an independent root link; its former children belong to Apps.
+    for (const node of nodes) {
+      if (node.id === 'soutien') node.parent = root.id;
+      else if (node.parent === 'soutien') node.parent = 'apps';
+    }
+    const branches = childrenOf(root.id).filter(node => node.id !== 'soutien');
     if (!branches.length) return false;
 
     // Each branch receives a vertical block sized to its number of projects.
@@ -93,6 +98,31 @@
     if (changed) saveNodes();
     return changed;
   }
+
+  const originalDrawLinks = drawLinks;
+  drawLinks = function drawSupportLink() {
+    originalDrawLinks();
+    const connected = nodes.filter(node => node.parent && nodeById(node.parent));
+    const paths = links.querySelectorAll('path');
+    const dots = links.querySelectorAll('circle');
+    connected.forEach((node, index) => {
+      const path = paths[index];
+      if (!path) return;
+      path.dataset.from = node.parent;
+      path.dataset.to = node.id;
+      if (node.id !== 'soutien' || node.parent !== 'root') return;
+      const root = nodeById('root');
+      const supportCard = nodesLayer.querySelector('[data-id="soutien"]');
+      const rootCard = nodesLayer.querySelector('[data-id="root"]');
+      const x = root.x + (rootCard?.offsetWidth || 230) / 2;
+      const top = node.y + (supportCard?.offsetHeight || 264);
+      path.setAttribute('d', `M ${x} ${root.y} L ${x} ${top}`);
+      if (dots[index]) {
+        dots[index].setAttribute('cx', x);
+        dots[index].setAttribute('cy', (root.y + top) / 2);
+      }
+    });
+  };
 
   const originalRender = render;
   render = function cr3atixAutoLayoutRender() {

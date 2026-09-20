@@ -13,7 +13,7 @@
   const SYSTEM_NODES = [
     {
       id: 'soutien',
-      parent: 'apps',
+      parent: 'root',
       title: 'CR3@TIX SOUTIEN',
       type: 'APPLICATION',
       desc: 'Soutenir volontairement les projets CR3@TIX, sans contrepartie',
@@ -33,6 +33,9 @@
       const index = next.findIndex(node => node?.id === systemNode.id);
       if (index >= 0) next[index] = { ...next[index], ...cloneState(systemNode) };
       else next.push(cloneState(systemNode));
+    }
+    for (const node of next) {
+      if (node.parent === 'soutien') node.parent = 'apps';
     }
     return next;
   };

@@ -5,3 +5,5 @@ Périmètre : rendu de la carte et renouvellement du cache de l'application ; co
 2026-09-20 — Kev demande de pouvoir dézoomer davantage sur mobile pour voir toute la carte. Dézoom minimum de 5 %, applicable aux trois chemins de zoom.
 
 2026-09-20 — À la demande de Kev, SOUTIEN est positionnée au-dessus de la vignette centrale CR3@TIX, à la même abscisse et 370 px plus haut. Placement recalculé après chaque chargement des projets.
+
+2026-09-20 — Correction des connexions : SOUTIEN reliée directement à root par un lien vertical indépendant. Ses anciens enfants directs (dont MOVIES) rejoignent Applications ; les autres hiérarchies restent inchangées.

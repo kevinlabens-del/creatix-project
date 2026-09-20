@@ -117,7 +117,7 @@ jobs:
               html = html.replace('</head>', helper_css + '</head>', 1)
           target = '<script src="app.js"></script>'
           layout = '<script src="auto-layout.js"></script>'
-          remote = '<script src="remote-admin.js?v=1.16.33"></script>'
+          remote = '<script src="remote-admin.js?v=1.16.38"></script>'
           remove_ai_live = '<script src="remove-ai-live.js?v=1.0.0"></script>'
           card = '<script src="business-card.js?v=1.16.14"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
@@ -159,7 +159,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.37-support-position", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.38-support-links", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
