@@ -14,10 +14,14 @@
   function mount() {
     if (!document.body || document.getElementById(HOST_ID)) return;
 
+    const actions = document.querySelector('.top-actions');
     const host = document.createElement('div');
     host.id = HOST_ID;
     host.setAttribute('data-cr3atix-support', '');
-    document.body.appendChild(host);
+    host.dataset.mode = actions ? 'topbar' : 'fallback';
+
+    if (actions) actions.insertBefore(host, actions.firstChild);
+    else document.body.appendChild(host);
 
     const root = host.attachShadow({ mode: 'open' });
     const link = document.createElement('a');
@@ -30,52 +34,62 @@
 
     const style = document.createElement('style');
     style.textContent = `
-      :host { all: initial; }
+      :host {
+        all: initial;
+        display: block;
+        flex: 0 0 auto;
+      }
       a {
-        position: fixed;
-        right: max(12px, env(safe-area-inset-right));
-        bottom: max(12px, env(safe-area-inset-bottom));
-        z-index: 2147483646;
         box-sizing: border-box;
-        min-height: 44px;
+        height: 36px;
+        min-width: 36px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         gap: 7px;
-        padding: 9px 14px;
-        border: 1px solid rgba(118, 220, 255, .72);
-        border-radius: 999px;
-        background: rgba(7, 11, 24, .90);
-        color: #f6fbff;
-        font: 700 14px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        padding: 0 11px;
+        border: 1px solid rgba(255, 255, 255, .16);
+        border-radius: 12px;
+        background: rgba(12, 28, 22, .88);
+        color: #f2fff5;
+        font: 800 12px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         text-decoration: none;
-        letter-spacing: .01em;
-        box-shadow: 0 0 0 1px rgba(142, 79, 255, .20), 0 7px 26px rgba(0, 0, 0, .38), 0 0 20px rgba(0, 205, 255, .16);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
+        letter-spacing: .02em;
+        box-shadow: 0 0 0 1px rgba(82, 176, 255, .08), 0 0 15px rgba(146, 65, 255, .10);
         user-select: none;
         -webkit-tap-highlight-color: transparent;
-        transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        transition: transform .16s ease, border-color .16s ease, background .16s ease, box-shadow .16s ease;
       }
       a:hover, a:focus-visible {
-        transform: translateY(-2px);
-        border-color: rgba(183, 113, 255, .95);
-        background: rgba(12, 17, 37, .96);
-        box-shadow: 0 0 0 1px rgba(0, 225, 255, .25), 0 9px 30px rgba(0, 0, 0, .42), 0 0 24px rgba(153, 75, 255, .28);
+        transform: translateY(-1px);
+        border-color: rgba(118, 220, 255, .72);
+        background: rgba(14, 35, 27, .96);
+        box-shadow: 0 0 0 1px rgba(167, 88, 255, .22), 0 0 18px rgba(61, 148, 255, .24);
         outline: none;
       }
       a:active { transform: translateY(0) scale(.97); }
       .heart {
         color: #ff4e78;
-        font-size: 17px;
+        font-size: 16px;
         line-height: 1;
-        filter: drop-shadow(0 0 5px rgba(255, 78, 120, .42));
+        filter: drop-shadow(0 0 5px rgba(255, 78, 120, .38));
       }
-      @media (max-width: 420px) {
-        a { padding: 9px 12px; font-size: 13px; right: max(9px, env(safe-area-inset-right)); bottom: max(9px, env(safe-area-inset-bottom)); }
+      :host([data-mode="fallback"]) a {
+        position: fixed;
+        z-index: 80;
+        top: max(66px, calc(env(safe-area-inset-top, 0px) + 66px));
+        right: max(12px, env(safe-area-inset-right, 0px));
+      }
+      @media (max-width: 600px) {
+        a {
+          width: 36px;
+          padding: 0;
+          gap: 0;
+        }
+        .label { display: none; }
       }
       @media (prefers-reduced-motion: reduce) { a { transition: none; } }
-      @media print { a { display: none !important; } }
+      @media print { :host { display: none !important; } }
     `;
 
     root.append(style, link);

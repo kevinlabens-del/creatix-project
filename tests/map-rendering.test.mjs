@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.38-support-links'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.39-support-topbar'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
@@ -44,4 +44,20 @@ test('mobile fit includes the whole map and manual zoom can reach 5%', async () 
   assert.ok(context.view.scale > .05);
   assert.equal((app.match(/Math.max\(\.05,Math.min\(/g)||[]).length,3,
     'fit, buttons/wheel and pinch must share the same lower limit');
+});
+
+
+test('support button lives in the top bar and stays away from NYXEL', () => {
+  const html = read('_site/index.html');
+  const button = read('_site/support-button.js');
+  const sw = read('_site/sw.js');
+  const nyxel = read('_site/nyxel-map.css');
+  assert.ok(html.includes('support-button.js?v=1.16.39'));
+  assert.ok(button.includes("document.querySelector('.top-actions')"));
+  assert.ok(button.includes("actions.insertBefore(host, actions.firstChild)"));
+  assert.ok(button.includes('.label { display: none; }'));
+  assert.ok(!button.includes('bottom: max(12px'));
+  assert.ok(button.includes("https://kevinlabens-del.github.io/CR3-TIX-SOUTIEN-/"));
+  assert.ok(sw.includes("'./support-button.js?v=1.16.39'"));
+  assert.match(nyxel, /bottom:\s*max\(/);
 });

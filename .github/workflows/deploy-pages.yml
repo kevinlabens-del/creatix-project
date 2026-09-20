@@ -84,6 +84,7 @@ jobs:
           cp energy-transfer.js _site/energy-transfer.js
           cp -R nyxel-widget _site/nyxel-widget
           cp nyxel-map.css _site/nyxel-map.css
+          cp support-button.js _site/support-button.js
           cp -R soutien _site/soutien
 
           python3 - <<'PY'
@@ -128,6 +129,7 @@ jobs:
           nyxel_css = '<link rel="stylesheet" href="nyxel-widget/nyxel.css?v=1.4.0">'
           nyxel_map_css = '<link rel="stylesheet" href="nyxel-map.css?v=1.0.0">'
           nyxel_scripts = '<script src="nyxel-widget/config.js?v=1.4.0"></script><script src="nyxel-widget/nyxel.js?v=1.4.0"></script>'
+          support_button = '<script src="support-button.js?v=1.16.39"></script>'
           cloudflare_analytics = '<!-- Cloudflare Web Analytics --><script type=\'module\' src=\'https://static.cloudflareinsights.com/beacon.min.js\' data-cf-beacon=\'{"token": "28610ff3afd94bafa29a51254334921c"}\'></script><!-- End Cloudflare Web Analytics -->'
 
           html = html.replace('<script src="admin-security.js"></script>', '')
@@ -151,6 +153,8 @@ jobs:
           if card not in html: html = html.replace(remove_ai_live, remove_ai_live + card, 1)
           if fullscreen not in html: html = html.replace(card, card + fullscreen, 1)
           if neon not in html: html = html.replace(fullscreen, fullscreen + neon, 1)
+          html = re.sub(r'<script src="support-button\.js(?:\?v=[^"]+)?"></script>', '', html)
+          if support_button not in html: html = html.replace('</body>', support_button + '</body>', 1)
           if nyxel_scripts not in html: html = html.replace('</body>', nyxel_scripts + '</body>', 1)
           if 'static.cloudflareinsights.com/beacon.min.js' not in html:
               html = html.replace('</body>', cloudflare_analytics + '</body>', 1)
@@ -159,7 +163,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.38-support-links", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.39-support-topbar", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -173,6 +177,13 @@ jobs:
               if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
               if "'./energy-transfer.js'" not in text: text = text.replace("'./app.js'", "'./energy-transfer.js','./app.js'")
               if "'./projects.json'" not in text: text = text.replace("'./app.js'", "'./projects.json','./app.js'")
+              support_core = ['./support-button.js', './support-button.js?v=1.16.39']
+              if "'./support-button.js'" not in text:
+                  core_end = "];self.addEventListener('install'"
+                  if core_end not in text:
+                      raise SystemExit('Unable to locate the service-worker CORE list for support button')
+                  entries = ',' + ','.join(repr(path) for path in support_core)
+                  text = text.replace(core_end, entries + core_end, 1)
               nyxel_core = [
                   './nyxel-map.css',
                   './nyxel-widget/nyxel.css',
@@ -212,13 +223,17 @@ jobs:
           node --check soutien/projects.js
           node --check soutien/sw.js
           node --check remove-ai-live.js
+          node --check support-button.js
           node build-project-manifest.mjs _site/app.js _site/projects.json
           test -f _site/nyxel-widget/assets/nyxel-idle.png
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
           grep -q 'remove-ai-live.js?v=1.0.0' _site/index.html
+          grep -q 'support-button.js?v=1.16.39' _site/index.html
+          test -f _site/support-button.js
           grep -q 'nyxel-widget/nyxel.js?v=1.4.0' _site/sw.js
           grep -q 'remove-ai-live.js' _site/sw.js
+          grep -q 'support-button.js?v=1.16.39' _site/sw.js
           grep -q 'nyxel-widget/assets/nyxel-signature.png' _site/sw.js
           grep -q 'static.cloudflareinsights.com/beacon.min.js' _site/index.html
           test -f _site/soutien/index.html

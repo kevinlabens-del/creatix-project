@@ -6,6 +6,10 @@ Le déploiement GitHub Pages ajoute automatiquement NYXEL à gauche des boutons 
 zoom. Le widget reste autonome dans `nyxel-widget/`; son adaptation à la carte se
 trouve dans `nyxel-map.css`.
 
+Le bouton `❤ Soutenir` est injecté dans la barre supérieure, avant les commandes
+Centrer/Rechercher. Il devient cœur seul sur mobile pour ne pas surcharger la
+topbar et reste volontairement éloigné de NYXEL.
+
 ## CR3@TIX SOUTIEN
 
 L’application mobile-first est publiée dans `soutien/`. Elle lit directement
