@@ -1,5 +1,5 @@
 # État du projet
-Version du correctif : 1.16.42 (20 septembre 2026).
+Version du correctif : 1.16.43 (20 septembre 2026).
 Correctif : suppression du contexte preserve-3d et des hints de masquage/promotion GPU forcés ; ordre explicite liaisons, cartes, boutons.
 Publication : workflow GitHub Pages sur push main, avec tests Soutien obligatoires.
 Limite : navigateur de vérification distant ; pas d'accès au GPU du téléphone ayant produit les captures.
@@ -21,3 +21,6 @@ SOUTIEN : vignette déplacée au-dessus du nœud central ; emplacement retiré d
 
 
 2026-09-20 — v1.16.42 — topbar mobile en deux lignes. Le nom complet `CR3@TIX PROJECT MAP` est restauré et ne doit plus être masqué. Les boutons Plein écran et Recherche sont supprimés de la version publiée. La deuxième ligne contient uniquement `❤ Soutenir` avec son libellé visible et `Centrer`. Le bouton Soutenir reste éloigné de NYXEL.
+
+
+2026-09-20 — v1.16.43 — restauration du layout original de la topbar après régression v1.16.42. Suppression totale de `topbar-layout.css` du build et du cache. La hauteur/structure d’origine de la MAP est conservée. Boutons Plein écran et Recherche restent supprimés ; `❤ Soutenir` avec texte visible et `Centrer` utilisent la topbar d’origine sans modifier le viewport.

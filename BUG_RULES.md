@@ -17,3 +17,6 @@ Ne jamais repositionner le plein écran en `fixed` au-dessus de la topbar : il p
 
 
 Les boutons Plein écran et Recherche ont été retirés de la topbar publique v1.16.42 car ils n’apportent pas assez de valeur sur mobile. Ne pas les réintroduire sans demande explicite. Le nom `CR3@TIX PROJECT MAP` doit toujours rester visible en entier.
+
+
+Ne jamais changer la hauteur ou le mode de layout de `.topbar` pour ajouter une commande : cela peut modifier le viewport et casser le cadrage de la MAP. Toute nouvelle action doit s’intégrer dans la topbar originale sans grid, sans seconde ligne et sans modifier sa hauteur. Si l’espace manque, supprimer une commande secondaire plutôt que modifier la géométrie du viewport.

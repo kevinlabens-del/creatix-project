@@ -20,3 +20,6 @@ Version 1.16.36 : limite de dézoom abaissée de 22 % à 5 % pour recentrage, bo
 
 
 2026-09-20 — v1.16.42 : nom complet `CR3@TIX PROJECT MAP` toujours visible. Sur mobile, topbar en deux lignes ; deuxième ligne = `❤ Soutenir` + Centrer. Plein écran et Recherche retirés. Le libellé Soutenir ne doit plus être masqué.
+
+
+2026-09-20 — v1.16.43 : ne jamais modifier la hauteur de la topbar de MAP. La tentative deux lignes a cassé le cadrage. Topbar originale conservée ; seules les commandes inutiles sont supprimées. `❤ Soutenir` garde son texte et cohabite avec Centrer.

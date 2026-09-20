@@ -19,3 +19,6 @@ Périmètre : rendu de la carte et renouvellement du cache de l'application ; co
 
 
 2026-09-20 — Kev refuse le compromis cœur seul + nom tronqué. Décision v1.16.42 : topbar mobile en deux lignes, nom complet `CR3@TIX PROJECT MAP`, bouton `❤ Soutenir` avec texte visible, bouton Centrer conservé, Plein écran et Recherche supprimés.
+
+
+2026-09-20 — Capture montrant une régression sévère après v1.16.42 : cadrage MAP cassé, grosse carte seule visible. Diagnostic : la topbar à deux lignes a modifié la géométrie du viewport. v1.16.43 : rollback du layout à deux lignes, suppression de topbar-layout.css, retour à la topbar originale ; Soutenir + Centrer uniquement.

@@ -10,3 +10,6 @@ Tous les contrôles de la topbar doivent appartenir au même flux `.top-actions`
 
 
 Mobile v1.16.42 : topbar en deux lignes. Ligne 1 = identité complète `CR3@TIX PROJECT MAP`. Ligne 2 = actions utiles `❤ Soutenir` et Centrer. Ne jamais masquer `PROJECT MAP` pour gagner de la place ; supprimer ou déplacer les commandes secondaires à la place.
+
+
+La topbar MAP conserve sa géométrie d’origine sur toutes les tailles. Ne pas la transformer en grid/deux lignes et ne pas modifier sa hauteur pour ajouter une action. Les actions autorisées publiquement sont `❤ Soutenir` et Centrer ; le nom complet `CR3@TIX PROJECT MAP` reste visible.
