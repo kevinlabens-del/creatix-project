@@ -16,3 +16,6 @@ Périmètre : rendu de la carte et renouvellement du cache de l'application ; co
 
 
 2026-09-20 — Nouvelle capture mobile : le bouton Soutien reste invisible. Diagnostic sur l’artefact publié : le bouton plein écran était `position:fixed; right:101px`, exactement au-dessus de la place du cœur Soutien injecté dans `.top-actions`. Correction v1.16.41 : plein écran déplacé dans `.top-actions`, libellé PROJECT MAP masqué sous 430 px pour garantir quatre commandes visibles.
+
+
+2026-09-20 — Kev refuse le compromis cœur seul + nom tronqué. Décision v1.16.42 : topbar mobile en deux lignes, nom complet `CR3@TIX PROJECT MAP`, bouton `❤ Soutenir` avec texte visible, bouton Centrer conservé, Plein écran et Recherche supprimés.

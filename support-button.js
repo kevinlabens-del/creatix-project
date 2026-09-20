@@ -82,11 +82,21 @@
       }
       @media (max-width: 600px) {
         a {
-          width: 36px;
-          padding: 0;
-          gap: 0;
+          width: auto;
+          min-width: 104px;
+          height: 42px;
+          padding: 0 14px;
+          gap: 7px;
+          font-size: 13px;
         }
-        .label { display: none; }
+        .label { display: inline; }
+      }
+      @media (max-width: 380px) {
+        a {
+          min-width: 96px;
+          padding: 0 12px;
+          font-size: 12px;
+        }
       }
       @media (prefers-reduced-motion: reduce) { a { transition: none; } }
       @media print { :host { display: none !important; } }

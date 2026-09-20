@@ -17,3 +17,6 @@ Version 1.16.36 : limite de dézoom abaissée de 22 % à 5 % pour recentrage, bo
 
 
 2026-09-20 — v1.16.41 : tous les contrôles du haut partagent `top-actions`. Le plein écran ne flotte plus au-dessus du bouton Soutien. Sous 430 px, `PROJECT MAP` est masqué pour préserver les quatre commandes.
+
+
+2026-09-20 — v1.16.42 : nom complet `CR3@TIX PROJECT MAP` toujours visible. Sur mobile, topbar en deux lignes ; deuxième ligne = `❤ Soutenir` + Centrer. Plein écran et Recherche retirés. Le libellé Soutenir ne doit plus être masqué.
