@@ -5,3 +5,6 @@ Les couches transparentes plein écran ne doivent pas bloquer les cartes : point
 À chaque correction du rendu, incrémenter la version du cache généré dans le workflow.
 
 Garder la même limite minimale pour fit(), zoomAt() et le pincement ; vérifier le cadrage sur un viewport de 360 px avec des projets à coordonnées négatives.
+
+
+Le bouton Soutenir public de MAP doit rester en bas à gauche, en `position:fixed`, sans modifier la topbar, le viewport, world ou la caméra. Ne jamais le déplacer dans la topbar sans demande explicite. NYXEL et le zoom restent réservés à la zone basse droite.

@@ -33,8 +33,8 @@
       :host { all: initial; }
       a {
         position: fixed;
-        right: max(12px, env(safe-area-inset-right));
-        bottom: max(12px, env(safe-area-inset-bottom));
+        left: max(14px, env(safe-area-inset-left));
+        bottom: max(14px, env(safe-area-inset-bottom));
         z-index: 2147483646;
         box-sizing: border-box;
         min-height: 44px;
@@ -72,7 +72,7 @@
         filter: drop-shadow(0 0 5px rgba(255, 78, 120, .42));
       }
       @media (max-width: 420px) {
-        a { padding: 9px 12px; font-size: 13px; right: max(9px, env(safe-area-inset-right)); bottom: max(9px, env(safe-area-inset-bottom)); }
+        a { padding: 9px 12px; font-size: 13px; left: max(10px, env(safe-area-inset-left)); bottom: max(10px, env(safe-area-inset-bottom)); }
       }
       @media (prefers-reduced-motion: reduce) { a { transition: none; } }
       @media print { a { display: none !important; } }

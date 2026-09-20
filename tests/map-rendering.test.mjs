@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.38-support-links'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.39-support-bottom-left'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
@@ -44,4 +44,18 @@ test('mobile fit includes the whole map and manual zoom can reach 5%', async () 
   assert.ok(context.view.scale > .05);
   assert.equal((app.match(/Math.max\(\.05,Math.min\(/g)||[]).length,3,
     'fit, buttons/wheel and pinch must share the same lower limit');
+});
+
+
+test('support button stays bottom-left and does not alter MAP topbar', () => {
+  const html = read('_site/index.html');
+  const button = read('_site/support-button.js');
+  const sw = read('_site/sw.js');
+  assert.ok(html.includes('support-button.js?v=1.16.39'));
+  assert.ok(button.includes('left: max(14px, env(safe-area-inset-left))'));
+  assert.ok(button.includes('bottom: max(14px, env(safe-area-inset-bottom))'));
+  assert.ok(!button.includes('right: max(12px'));
+  assert.ok(button.includes('<span class="label">Soutenir</span>'));
+  assert.ok(sw.includes("'./support-button.js?v=1.16.39'"));
+  assert.ok(html.includes('<strong>CR3@TIX</strong><span>PROJECT MAP</span>'));
 });

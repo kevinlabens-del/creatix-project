@@ -8,3 +8,6 @@ Version 1.16.36 : limite de dézoom abaissée de 22 % à 5 % pour recentrage, bo
 2026-09-20 — À la demande de Kev, SOUTIEN est positionnée au-dessus de la vignette centrale CR3@TIX, à la même abscisse et 370 px plus haut. Placement recalculé après chaque chargement des projets.
 
 2026-09-20 — Correction des connexions : SOUTIEN reliée directement à root par un lien vertical indépendant. Ses anciens enfants directs (dont MOVIES) rejoignent Applications ; les autres hiérarchies restent inchangées.
+
+
+2026-09-20 — v1.16.39 : bouton `❤ Soutenir` en bas à gauche uniquement. Ne modifie jamais la topbar ou le cadrage de la MAP. NYXEL et zoom restent en bas à droite.
