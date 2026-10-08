@@ -120,7 +120,7 @@ jobs:
           layout = '<script src="auto-layout.js"></script>'
           remote = '<script src="remote-admin.js?v=1.16.38"></script>'
           remove_ai_live = '<script src="remove-ai-live.js?v=1.0.0"></script>'
-          card = '<script src="business-card.js?v=1.16.40"></script>'
+          card = '<script src="business-card.js?v=1.16.41"></script>'
           fullscreen = '<script src="fullscreen-landscape.js?v=1.16.16"></script>'
           neon = '<script src="neon-cards.js?v=1.16.21"></script>'
           cosmic_css = '<link rel="stylesheet" href="cosmic-background.css">'
@@ -163,7 +163,7 @@ jobs:
           sw = Path('_site/sw.js')
           if sw.exists():
               text = sw.read_text(encoding='utf-8')
-              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.40-card-print", text)
+              text = re.sub(r"cr3atix-map-v1\.16\.[^'\"]+", "cr3atix-map-v1.16.41-card-print", text)
               text = text.replace(", './admin-security.js'", "").replace(",'./admin-security.js'", "").replace("'./admin-security.js',", "").replace("'./admin-security.js'", "")
               text = text.replace(", './extra-zoom.js'", "").replace(",'./extra-zoom.js'", "").replace("'./extra-zoom.js',", "").replace("'./extra-zoom.js'", "")
               if "'./auto-layout.js'" not in text: text = text.replace("'./app.js','./auto-update.js'", "'./app.js','./auto-layout.js','./auto-update.js'")
@@ -172,11 +172,11 @@ jobs:
               text = text.replace("'./business-card.jpg'", "'./business-card-v2.jpg'")
               if "'./business-card.js'" not in text: text = text.replace("'./remove-ai-live.js'", "'./remove-ai-live.js','./business-card.js','./business-card-v2.jpg'")
               elif "'./business-card-v2.jpg'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./business-card-v2.jpg'")
-              if "'./business-card.js?v=1.16.40'" not in text:
+              if "'./business-card.js?v=1.16.41'" not in text:
                   core_end = "];self.addEventListener('install'"
                   if core_end not in text:
                       raise SystemExit('Unable to locate the service-worker CORE list for card print')
-                  text = text.replace(core_end, ",'./business-card.js?v=1.16.40'" + core_end, 1)
+                  text = text.replace(core_end, ",'./business-card.js?v=1.16.41'" + core_end, 1)
               if "'./fullscreen-landscape.js'" not in text: text = text.replace("'./business-card.js'", "'./business-card.js','./fullscreen-landscape.js'")
               if "'./neon-cards.js'" not in text: text = text.replace("'./fullscreen-landscape.js'", "'./fullscreen-landscape.js','./neon-cards.js'")
               if "'./cosmic-background.css'" not in text: text = text.replace("'./styles.css'", "'./styles.css','./cosmic-background.css'")
@@ -234,8 +234,8 @@ jobs:
           test -f _site/nyxel-widget/assets/nyxel-idle.png
           test -f _site/nyxel-widget/assets/nyxel-look-left.png
           grep -q 'nyxel-widget/nyxel.js' _site/index.html
-          grep -q 'business-card.js?v=1.16.40' _site/index.html
-          grep -q 'business-card.js?v=1.16.40' _site/sw.js
+          grep -q 'business-card.js?v=1.16.41' _site/index.html
+          grep -q 'business-card.js?v=1.16.41' _site/sw.js
           grep -q 'remove-ai-live.js?v=1.0.0' _site/index.html
           grep -q 'support-button.js?v=1.16.39' _site/index.html
           test -f _site/support-button.js
