@@ -19,7 +19,7 @@ test('flat rendering overrides legacy CSS and keeps negative-position cards visi
 });
 test('published page loads the fix and updates installed app cache', () => {
   assert.ok(read('_site/index.html').includes('href="cosmic-background.css"'));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.39-support-bottom-left'));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.40-card-print'));
   assert.ok(read('_site/sw.js').includes("'./cosmic-background.css'"));
 });
 
