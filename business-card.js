@@ -18,6 +18,7 @@
       #cr3-business-card .hint{padding:0 5px 5px;color:#9bb7a6;font:11px/1.3 system-ui,sans-serif}
       #cr3-card-modal{position:fixed;inset:0;z-index:99999;display:none;overflow:hidden;background:rgba(0,0,0,.94);backdrop-filter:blur(7px);touch-action:none;overscroll-behavior:none}
       #cr3-card-modal.open{display:block}
+      body.cr3-card-open #cr3-fullscreen-landscape{visibility:hidden!important;pointer-events:none!important}
       #cr3-card-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
       #cr3-card-modal img{display:block;width:auto;height:auto;max-width:calc(100vw - 36px);max-height:calc(100dvh - 100px);object-fit:contain;border-radius:12px;box-shadow:0 20px 80px #000;background:transparent;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none;touch-action:none}
       #cr3-card-print-control,#cr3-card-modal-print{display:grid;place-items:center;width:42px;height:42px;padding:0;box-sizing:border-box;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(8,34,25,.94);color:#effff7;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.34);-webkit-tap-highlight-color:transparent}
@@ -142,8 +143,8 @@
       scale = next; applyTransform(); e.preventDefault();
     }, {passive:false});
 
-    const open = () => { resetZoom(); modal.classList.add('open'); document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; };
-    const close = () => { modal.classList.remove('open'); resetZoom(); document.documentElement.style.overflow=''; document.body.style.overflow=''; };
+    const open = () => { resetZoom(); modal.classList.add('open'); document.body.classList.add('cr3-card-open'); document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; };
+    const close = () => { modal.classList.remove('open'); document.body.classList.remove('cr3-card-open'); resetZoom(); document.documentElement.style.overflow=''; document.body.style.overflow=''; };
     function printBusinessCard(event) {
       if (event) { event.preventDefault(); event.stopPropagation(); }
       // Call synchronously from the tap so Android browsers retain user activation.
