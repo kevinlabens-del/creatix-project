@@ -20,6 +20,20 @@
       #cr3-card-modal.open{display:block}
       #cr3-card-stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;overflow:hidden;touch-action:none}
       #cr3-card-modal img{display:block;width:auto;height:auto;max-width:calc(100vw - 36px);max-height:calc(100dvh - 100px);object-fit:contain;border-radius:12px;box-shadow:0 20px 80px #000;background:transparent;transform-origin:center center;will-change:transform;user-select:none;-webkit-user-drag:none;touch-action:none}
+      #cr3-card-print-control,#cr3-card-modal-print{display:grid;place-items:center;width:42px;height:42px;padding:0;box-sizing:border-box;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(8,34,25,.94);color:#effff7;cursor:pointer;box-shadow:0 4px 18px rgba(0,0,0,.34);-webkit-tap-highlight-color:transparent}
+      #cr3-card-print-control{position:absolute;z-index:9}
+      #cr3-card-modal-print{position:fixed;right:84px;top:max(24px,env(safe-area-inset-top));z-index:100003}
+      #cr3-card-print-control svg,#cr3-card-modal-print svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      #cr3-card-print-control:hover,#cr3-card-modal-print:hover{color:#b9ffcc;border-color:rgba(155,255,192,.65)}
+      #cr3-card-print-control:focus-visible,#cr3-card-modal-print:focus-visible{outline:3px solid #9feec9;outline-offset:3px}
+      #cr3-card-print-sheet{display:none}
+      @page{size:85mm 55mm;margin:0}
+      @media print{
+        html,body{margin:0!important;padding:0!important;width:auto!important;height:auto!important;overflow:visible!important;background:#fff!important}
+        body > :not(#cr3-card-print-sheet){display:none!important}
+        #cr3-card-print-sheet{display:flex!important;position:static!important;align-items:center!important;justify-content:center!important;width:85mm!important;height:55mm!important;margin:0!important;padding:0!important;box-sizing:border-box!important;overflow:hidden!important;background:#fff!important}
+        #cr3-card-print-sheet img{display:block!important;width:100%!important;height:100%!important;max-width:100%!important;max-height:100%!important;object-fit:contain!important;border:0!important;border-radius:0!important;box-shadow:none!important;transform:none!important}
+      }
       #cr3-card-close{position:fixed;right:18px;top:max(18px,env(safe-area-inset-top));z-index:100002;width:54px;height:54px;border:1px solid rgba(255,255,255,.25);border-radius:50%;background:rgba(10,20,16,.9);color:white;font:34px/48px system-ui;text-align:center;cursor:pointer}
       #cr3-card-zoom-hint{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:100002;padding:8px 12px;border-radius:999px;background:rgba(10,20,16,.82);border:1px solid rgba(255,255,255,.12);color:#dfffea;font:12px/1.2 system-ui,sans-serif;white-space:nowrap;pointer-events:none}
       @media (orientation:portrait){#cr3-card-modal img{max-width:calc(100vw - 28px);max-height:75dvh}}
@@ -38,10 +52,26 @@
     card.innerHTML = `<img src="${CARD_IMAGE}?v=1.16.14" alt="Carte de visite CR3@TIX"><div class="label">Carte de visite</div><div class="hint">Toucher pour agrandir</div>`;
     mapWorld.appendChild(card);
 
+    const printIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><path d="M6 14h12v7H6z"/><path d="M18 12h.01"/></svg>';
+    const cardPrint = document.createElement('button');
+    cardPrint.id = 'cr3-card-print-control';
+    cardPrint.type = 'button';
+    cardPrint.setAttribute('title','Imprimer');
+    cardPrint.setAttribute('aria-label','Imprimer la carte de visite');
+    cardPrint.innerHTML = printIcon;
+    mapWorld.appendChild(cardPrint);
+
     const modal = document.createElement('div');
     modal.id = 'cr3-card-modal';
-    modal.innerHTML = `<div id="cr3-card-stage"><img id="cr3-card-full" src="${CARD_IMAGE}?v=1.16.14" alt="Carte de visite CR3@TIX agrandie"></div><button id="cr3-card-close" aria-label="Fermer">×</button><div id="cr3-card-zoom-hint">Pincer pour zoomer • Glisser pour déplacer</div>`;
+    modal.innerHTML = `<div id="cr3-card-stage"><img id="cr3-card-full" src="${CARD_IMAGE}?v=1.16.14" alt="Carte de visite CR3@TIX agrandie"></div><button id="cr3-card-close" aria-label="Fermer">×</button><button id="cr3-card-modal-print" type="button" title="Imprimer" aria-label="Imprimer la carte de visite">${printIcon}</button><div id="cr3-card-zoom-hint">Pincer pour zoomer • Glisser pour déplacer</div>`;
     document.body.appendChild(modal);
+
+    const printSheet = document.createElement('div');
+    printSheet.id = 'cr3-card-print-sheet';
+    printSheet.setAttribute('aria-hidden','true');
+    printSheet.innerHTML = '<img src="' + CARD_IMAGE + '?v=1.16.14" alt="">';
+    document.body.appendChild(printSheet);
+    const printImage = printSheet.querySelector('img');
 
     const stage = modal.querySelector('#cr3-card-stage');
     const full = modal.querySelector('#cr3-card-full');
@@ -114,6 +144,22 @@
 
     const open = () => { resetZoom(); modal.classList.add('open'); document.documentElement.style.overflow='hidden'; document.body.style.overflow='hidden'; };
     const close = () => { modal.classList.remove('open'); resetZoom(); document.documentElement.style.overflow=''; document.body.style.overflow=''; };
+    function printBusinessCard(event) {
+      if (event) { event.preventDefault(); event.stopPropagation(); }
+      // Call synchronously from the tap so Android browsers retain user activation.
+      if (!printImage.complete || printImage.naturalWidth === 0) {
+        window.alert('La carte de visite est encore en cours de chargement. Réessaie dans un instant.');
+        return;
+      }
+      if (typeof window.print !== 'function') {
+        window.alert("L'impression n'est pas disponible dans ce navigateur.");
+        return;
+      }
+      window.print();
+    }
+    cardPrint.addEventListener('click', printBusinessCard);
+    modal.querySelector('#cr3-card-modal-print').addEventListener('click', printBusinessCard);
+
     card.addEventListener('click', open);
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
     modal.querySelector('#cr3-card-close').addEventListener('click', close);
@@ -126,6 +172,7 @@
       const rootWidth=250, rootHeight=300, cardWidth=300;
       const cardX=root.x+(rootWidth-cardWidth)/2, cardY=root.y+rootHeight+180;
       card.style.left=`${cardX}px`; card.style.top=`${cardY}px`;
+      cardPrint.style.left=`${cardX+cardWidth-54}px`; cardPrint.style.top=`${cardY+16}px`;
       const x1=root.x+rootWidth/2, y1=root.y+rootHeight, x2=cardX+cardWidth/2, y2=cardY, pad=20;
       const minX=Math.min(x1,x2)-pad,minY=Math.min(y1,y2)-pad;
       const w=Math.max(40,Math.abs(x2-x1)+pad*2),h=Math.max(40,Math.abs(y2-y1)+pad*2);
