@@ -22,7 +22,7 @@ test('native printing includes image only and preserves its proportions', () => 
 });
 test('published PWA uses the updated asset and cache version', () => {
   assert.equal(read('_site/business-card.js'), read('business-card.js'));
-  assert.ok(read('_site/index.html').includes('business-card.js?v=1.16.40'));
-  assert.ok(read('_site/sw.js').includes("'./business-card.js?v=1.16.40'"));
-  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.40-card-print'));
+  assert.ok(read('_site/index.html').includes('business-card.js?v=1.16.41'));
+  assert.ok(read('_site/sw.js').includes("'./business-card.js?v=1.16.41'"));
+  assert.ok(read('_site/sw.js').includes('cr3atix-map-v1.16.41-card-print'));
 });
