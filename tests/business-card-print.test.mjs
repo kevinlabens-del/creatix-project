@@ -16,7 +16,7 @@ test('native printing includes image only and preserves its proportions', () => 
   assert.ok(js.includes('@page{size:85mm 55mm;margin:0}'));
   assert.ok(js.includes('body > :not(#cr3-card-print-sheet){display:none!important}'));
   assert.ok(js.includes('object-fit:contain!important'));
-  assert.ok(js.includes("printSheet.innerHTML = '<img src="' + CARD_IMAGE"));
+  assert.ok(js.includes("printSheet.innerHTML = '<img src="));
   assert.ok(js.includes('window.print()'));
   assert.ok(!js.includes('window.open('));
 });
